@@ -5,3 +5,6 @@ xlua.xcodeproj/*
 /Release/**
 /.vs/*
 /xlua.vcxproj.user
+.codex.contexts.json
+.DS_Store
+*/.DS_Store
