@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <algorithm>
+#include <fstream>
 #include <vector>
 
 #ifndef XPLM200
@@ -24,8 +26,14 @@
 #include <XPLMProcessing.h>
 #include <XPLMMenus.h>
 #include <XPLMPlanes.h>
+#if IBM
+#include <sys/stat.h>
+#else
+#include <sys/stat.h>
+#endif
 
 #include "module.h"
+#include "xpfuncs.h"
 #include "xpdatarefs.h"
 #include "xpcommands.h"
 #include "xptimers.h"
@@ -60,6 +68,92 @@ XPLMCommandRef			reset_cmd = nullptr;
 XPLMMenuID				PluginMenu = 0;
 
 static string plugin_base_path;
+
+#if IBM
+#define XLUA_STAT_STRUCT struct _stat
+#define XLUA_STAT _stat
+#else
+#define XLUA_STAT_STRUCT struct stat
+#define XLUA_STAT stat
+#endif
+
+static bool file_exists(const string& path)
+{
+	FILE* f = fopen(path.c_str(), "rb");
+	if (f == nullptr)
+		return false;
+	fclose(f);
+	return true;
+}
+
+static bool get_mod_time(const string& path, time_t& mod_time)
+{
+	XLUA_STAT_STRUCT info = {};
+	if (XLUA_STAT(path.c_str(), &info) != 0)
+		return false;
+	mod_time = info.st_mtime;
+	return true;
+}
+
+static bool read_manifest(const string& manifest_path,
+						  const string& scripts_dir_path,
+						  vector<string>& module_names)
+{
+	time_t scripts_mtime = 0;
+	time_t manifest_mtime = 0;
+	if (!get_mod_time(scripts_dir_path, scripts_mtime))
+		return false;
+	if (!get_mod_time(manifest_path, manifest_mtime))
+		return false;
+	if (manifest_mtime < scripts_mtime)
+		return false;
+
+	std::ifstream input(manifest_path.c_str());
+	if (!input.is_open())
+		return false;
+
+	string line;
+	while (std::getline(input, line))
+	{
+		if (!line.empty() && line.back() == '\r')
+			line.pop_back();
+
+		if (line.empty() || line[0] == '#')
+			continue;
+
+		string script_path(scripts_dir_path);
+		script_path += "/";
+		script_path += line;
+		script_path += "/";
+		script_path += line;
+		script_path += ".lua";
+
+		if (!file_exists(script_path))
+		{
+			module_names.clear();
+			return false;
+		}
+
+		module_names.emplace_back(line);
+	}
+
+	return !module_names.empty();
+}
+
+static void write_manifest(const string& manifest_path, const vector<string>& module_names)
+{
+	FILE* manifest = fopen(manifest_path.c_str(), "w");
+	if (manifest == nullptr)
+		return;
+
+	fputs("# XLua module manifest v1\n", manifest);
+	for (const string& name : module_names)
+	{
+		fputs(name.c_str(), manifest);
+		fputc('\n', manifest);
+	}
+	fclose(manifest);
+}
 
 struct lua_alloc_request_t {
 			void *	ud;
@@ -128,7 +222,10 @@ static float xlua_pre_timer_master_cb(
 	if(XPLMGetDatai(g_replay_active) == 0)
 	if(XPLMGetDataf(g_sim_period) > 0.0f)	
 	for(vector<module *>::iterator m = g_modules.begin(); m != g_modules.end(); ++m)	
-		(*m)->pre_physics();
+	{
+		if((*m)->has_pre_physics())
+			(*m)->pre_physics();
+	}
 	return -1;
 }
 
@@ -142,11 +239,17 @@ static float xlua_post_timer_master_cb(
 	{
 		if(XPLMGetDataf(g_sim_period) > 0.0f)
 		for(vector<module *>::iterator m = g_modules.begin(); m != g_modules.end(); ++m)		
-			(*m)->post_physics();
+		{
+			if((*m)->has_post_physics())
+				(*m)->post_physics();
+		}
 	}
 	else
 	for(vector<module *>::iterator m = g_modules.begin(); m != g_modules.end(); ++m)		
-		(*m)->post_replay();
+	{
+		if((*m)->has_post_replay())
+			(*m)->post_replay();
+	}
 	return -1;
 }
 
@@ -160,45 +263,82 @@ void InitScripts(void)
 
 	scripts_dir_path += "scripts";
 
-	int offset = 0;
-	int mf, fcount;
-	while (1)
+	vector<string> module_names;
+	const string manifest_path = scripts_dir_path + "/.xlua_manifest";
+	bool manifest_loaded = read_manifest(manifest_path, scripts_dir_path, module_names);
+
+	if (!manifest_loaded)
 	{
-		char fname_buf[2048];
-		char* fptr;
-		XPLMGetDirectoryContents(
-			scripts_dir_path.c_str(),
-			offset,
-			fname_buf,
-			sizeof(fname_buf),
-			&fptr,
-			1,
-			&mf,
-			&fcount);
-		if (fcount == 0)
-			break;
-
-		if (strcmp(fptr, ".DS_Store") != 0)
+		constexpr int kBatchSize = 16;
+		int offset = 0;
+		int mf = 0;
+		int fcount = 0;
+		do
 		{
-			string mod_path(scripts_dir_path);
-			mod_path += "/";
-			mod_path += fptr;
-			mod_path += "/";
-			string script_path(mod_path);
-			script_path += fptr;
-			script_path += ".lua";
+			char fname_buf[4096];
+			char* name_ptrs[kBatchSize] = { nullptr };
+			XPLMGetDirectoryContents(
+				scripts_dir_path.c_str(),
+				offset,
+				fname_buf,
+				sizeof(fname_buf),
+				name_ptrs,
+				kBatchSize,
+				&mf,
+				&fcount);
+			if (fcount == 0)
+				break;
 
-			g_modules.push_back(new module(
-				mod_path.c_str(),
-				init_script_path.c_str(),
-				script_path.c_str(),
-				lj_alloc_f,
-				NULL));
+			for (int i = 0; i < fcount; ++i)
+			{
+				const char* entry = name_ptrs[i];
+				if (entry == nullptr)
+					continue;
+
+				if (strcmp(entry, ".DS_Store") != 0)
+				{
+					module_names.emplace_back(entry);
+				}
+			}
+
+			offset += fcount;
+		} while (offset < mf);
+
+		std::sort(module_names.begin(), module_names.end());
+		if (!module_names.empty())
+			write_manifest(manifest_path, module_names);
+	}
+	else
+	{
+		std::sort(module_names.begin(), module_names.end());
+	}
+	for (const string& module_name : module_names)
+	{
+		string mod_path(scripts_dir_path);
+		mod_path += "/";
+		mod_path += module_name;
+		mod_path += "/";
+		string script_path(mod_path);
+		script_path += module_name;
+		script_path += ".lua";
+
+		if (!file_exists(script_path))
+		{
+			string warn("XLua: skipping module '");
+			warn += module_name;
+			warn += "' (missing ";
+			warn += script_path;
+			warn += ")\n";
+			XPLMDebugString(warn.c_str());
+			continue;
 		}
 
-		++offset;
-		if (offset == mf)
-			break;
+		g_modules.push_back(new module(
+			mod_path.c_str(),
+			init_script_path.c_str(),
+			script_path.c_str(),
+			lj_alloc_f,
+			NULL));
 	}
 }
 
@@ -353,6 +493,7 @@ PLUGIN_API void	XPluginStop(void)
 	}
 
 	CleanupScripts();
+	xlua_flush_log_queue();
 	
 	XPLMDestroyFlightLoop(g_pre_loop);
 	XPLMDestroyFlightLoop(g_post_loop);

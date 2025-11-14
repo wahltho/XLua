@@ -121,7 +121,10 @@ module::module(
 							void *				in_alloc_ref) :
 	m_interp(NULL),
 	m_memory(NULL),
-	m_path(in_module_path)
+	m_path(in_module_path),
+	m_has_pre_physics(false),
+	m_has_post_physics(false),
+	m_has_post_replay(false)
 {
 	int boiler_plate_paths = length_of_dir(in_init_script);
 	m_log_path = in_module_script + boiler_plate_paths;
@@ -168,6 +171,10 @@ module::module(
 	
 	int module_run_result = lua_pcall(m_interp, 1, 0, m_debug_proc);
 	CTOR_FAIL(module_run_result,"run module");
+
+	m_has_pre_physics = has_callout("before_physics");
+	m_has_post_physics = has_callout("after_physics");
+	m_has_post_replay = has_callout("after_replay");
 }
 
 int module::load_module_relative_path(const string& path)
@@ -231,16 +238,22 @@ void		module::flight_crash()
 
 void		module::pre_physics()
 {
+	if(!m_has_pre_physics)
+		return;
 	do_callout("before_physics");
 }
 
 void		module::post_physics()
 {
+	if(!m_has_post_physics)
+		return;
 	do_callout("after_physics");
 }
 
 void		module::post_replay()
 {
+	if(!m_has_post_replay)
+		return;
 	do_callout("after_replay");
 }
 
@@ -265,6 +278,24 @@ module::~module()
 	if(m_interp)
 		lua_close(m_interp);
 	destroy_alloc_block(m_memory);
+}
+
+bool module::has_callout(const char * call_name) const
+{
+	if(m_interp == NULL)
+		return false;
+
+	lua_getglobal(m_interp, "n");
+	if(!lua_istable(m_interp, -1))
+	{
+		lua_pop(m_interp, 1);
+		return false;
+	}
+
+	lua_getfield(m_interp, -1, call_name);
+	bool has = lua_isfunction(m_interp, -1);
+	lua_pop(m_interp, 2);
+	return has;
 }
 
 #if !MOBILE

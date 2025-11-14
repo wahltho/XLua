@@ -36,6 +36,12 @@
 static XPLMDataRef drSimRealTime = nullptr;
 
 static int l_my_print(lua_State* L);
+static void output_log_line(const std::string& line);
+static void emit_repeat_summary();
+
+static std::string g_last_log_line;
+static size_t g_last_log_repeats = 0;
+static const size_t kRepeatSummaryInterval = 64;
 
 // This is kind of a mess - Lua [annoyingly] doesn't give you a way to store a closure/Lua interpreter function
 // in C space.  The hack is to use luaL_ref to fill a new key in the registry table with a copy of ANY value from
@@ -539,7 +545,7 @@ static int l_my_print(lua_State *L)
 
 	// Unwieldy... but on the other hand, lua debug statements could in theory come from anywhere, from
 	// several different instances of xlua at the same time so the full path probably is needed.
-	XPLMDebugString((prefix + me->get_log_path() + "\n").c_str());
+	output_log_line(prefix + me->get_log_path() + "\n");
 
 	std::string output;
 	char num_buf[128];
@@ -577,11 +583,8 @@ static int l_my_print(lua_State *L)
 		output += " ";
 	}
 
-	// Keep the console output too.
-	puts(output.c_str());
-
 	output += "\n";
-	XPLMDebugString((prefix + output).c_str());
+	output_log_line(prefix + output);
 
 	return 0;
 }
@@ -621,9 +624,10 @@ int log_message(lua_State *L, char const* const format, ...)
 			{
 				snprintf(buffer, sizeof(buffer), "%sIn %s on line %d of '%s':\n", line_prefix, ar.name, ar.currentline, source_name);
 			}
-
-			XPLMDebugString(prefix.c_str()); XPLMDebugString(buffer);
-			printf("%s", prefix.c_str()); printf("%s", buffer);
+			
+			std::string stack_line(prefix);
+			stack_line += buffer;
+			output_log_line(stack_line);
 			buffer[0] = 0;
 
 			line_prefix = " -> ";
@@ -639,8 +643,7 @@ int log_message(lua_State *L, char const* const format, ...)
 	std::string output(prefix);
 	output += buffer;
 
-	XPLMDebugString(output.c_str());
-	printf("%s", output.c_str());
+	output_log_line(output);
 
 	return result;
 }
@@ -664,4 +667,43 @@ void	add_xpfuncs_to_interp(lua_State * L)
 	lua_getglobal(L, "_G");
 	luaL_register(L, NULL, printlib);
 	lua_pop(L, 1);
+}
+
+static void emit_repeat_summary()
+{
+	if (g_last_log_line.empty() || g_last_log_repeats == 0)
+		return;
+
+	char buffer[128];
+	snprintf(buffer, sizeof(buffer), "Previous message repeated %zu additional times\n", g_last_log_repeats);
+	std::string summary = get_log_prefix();
+	summary += buffer;
+	XPLMDebugString(summary.c_str());
+	printf("%s", summary.c_str());
+	g_last_log_repeats = 0;
+}
+
+static void output_log_line(const std::string& line)
+{
+	if (line == g_last_log_line)
+	{
+		++g_last_log_repeats;
+		if (g_last_log_repeats >= kRepeatSummaryInterval)
+		{
+			emit_repeat_summary();
+		}
+		return;
+	}
+
+	emit_repeat_summary();
+	g_last_log_line = line;
+	g_last_log_repeats = 0;
+	XPLMDebugString(line.c_str());
+	printf("%s", line.c_str());
+}
+
+void xlua_flush_log_queue(void)
+{
+	emit_repeat_summary();
+	g_last_log_line.clear();
 }

@@ -52,15 +52,23 @@ public:
 			void		post_physics();
 			void		post_replay();
 
+			bool		has_pre_physics() const { return m_has_pre_physics; }
+			bool		has_post_physics() const { return m_has_post_physics; }
+			bool		has_post_replay() const { return m_has_post_replay; }
+
 private:
 
 		void			do_callout(const char * call_name);
+		bool			has_callout(const char * call_name) const;
 
 	lua_State *				m_interp;
 	module_alloc_block *	m_memory;
 	string					m_path;
 	string					m_log_path;
 	int						m_debug_proc;
+	bool					m_has_pre_physics;
+	bool					m_has_post_physics;
+	bool					m_has_post_replay;
 
 	module();
 	module(const module& rhs);
