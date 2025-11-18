@@ -9,6 +9,11 @@ XLua is developed internally by Laminar Research and is intended to help our int
 XLua is **not** meant to be an "official" Lua plugin for X-Plane, and it definitely does not replace any of the existing Lua plugins, all of which have significantly more features than XLua itself.
 
 ## Release Notes
+**1.3.2r1 - 11/18/2025**
+* Script discovery now caches the module list in `.xlua_manifest`, so aircraft with many XLua scripts load faster and are enumerated deterministically.
+* Modules remember whether they implement `before_physics`, `after_physics`, or `after_replay`, avoiding unnecessary Lua lookups during each frame.
+* Logging consolidates duplicate messages and flushes cleanly on shutdown, reducing spam in `Log.txt` and improving troubleshooting performance.
+
 **1.3.0r2 - 09/05/2024**
 * Adds `get_timer_remaining` stub to init.lua.
 
@@ -251,4 +256,3 @@ On some complex aircraft, you might also need to reset your scripts if the "Star
 
 * _**Is there a way to compile a XLua script in a binary plugin (xpl file)?**_
   * No. If you want or need to encrypt Lua scripts, you need to use SASL.
-
