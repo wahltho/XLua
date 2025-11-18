@@ -38,18 +38,22 @@ Set `LINUX_BUILD_IMAGE` to use a different base image.
 
 ## Windows
 
-Visual Studio runs inside Parallels. Build steps:
+```
+./tools/workbench/build_win.sh
+```
 
-1. Share the repository into the VM (`\\Mac\Home\Documents\Projects\xlua` or a
-   dedicated drive).
-2. Open the `xLua.sln`/`.vcxproj` in Visual Studio 2022 (Desktop C++ workload
-   installed).
-3. Build via MSBuild:
-   ```
-   "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" ^
-       xlua.vcxproj /p:Configuration=Release /p:Platform=x64
-   ```
-4. artifacts will appear under `Release/plugins/win_x64`.
+Requirements:
 
-If you prefer driving this from the Mac side, create a Parallels shared folder
-and call MSBuild via `prlctl exec <vm> -- <command>` or expose the VM over SSH.
+* Parallels Desktop with the CLI tools (`prlctl`) available.
+* Visual Studio 2022 (Desktop C++ workload) installed inside the VM.
+* The repository shared into the VM, e.g. `\\Mac\Home\Documents\Projects\xlua\xlua`.
+
+Environment variables:
+
+* `PARALLELS_VM` – name of the VM (e.g. `Windows 11`).
+* `WIN_REPO_PATH` – Windows path to the shared repo.
+* Optional `MSBUILD_PATH` – override MSBuild location (defaults to the VS 2022
+  Community path).
+
+The script invokes MSBuild via `prlctl exec` and copies
+`Release\plugins\win_x64\` artifacts into `jenkins/build_products/`.
