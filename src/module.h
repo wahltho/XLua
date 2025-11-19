@@ -17,9 +17,11 @@ extern "C" {
 #include <lauxlib.h>
 }
 
+#include <array>
 #include <string>
 
 using std::string;
+using std::array;
 
 struct module_alloc_block;
 
@@ -52,23 +54,33 @@ public:
 			void		post_physics();
 			void		post_replay();
 
-			bool		has_pre_physics() const { return m_has_pre_physics; }
-			bool		has_post_physics() const { return m_has_post_physics; }
-			bool		has_post_replay() const { return m_has_post_replay; }
+			bool		has_pre_physics() const { return m_callout_refs[kCalloutBeforePhysics] != LUA_NOREF; }
+			bool		has_post_physics() const { return m_callout_refs[kCalloutAfterPhysics] != LUA_NOREF; }
+			bool		has_post_replay() const { return m_callout_refs[kCalloutAfterReplay] != LUA_NOREF; }
 
 private:
 
-		void			do_callout(const char * call_name);
-		bool			has_callout(const char * call_name) const;
+		enum CalloutId {
+			kCalloutAircraftLoad = 0,
+			kCalloutAircraftUnload,
+			kCalloutFlightStart,
+			kCalloutFlightCrash,
+			kCalloutBeforePhysics,
+			kCalloutAfterPhysics,
+			kCalloutAfterReplay,
+			kCalloutCount
+		};
+
+		int				capture_callout(const char * call_name);
+		void			register_callout_with_stp(int func_index, const char * call_name);
+		void			invoke_callout(CalloutId which);
 
 	lua_State *				m_interp;
 	module_alloc_block *	m_memory;
 	string					m_path;
 	string					m_log_path;
 	int						m_debug_proc;
-	bool					m_has_pre_physics;
-	bool					m_has_post_physics;
-	bool					m_has_post_replay;
+	array<int, kCalloutCount> m_callout_refs;
 
 	module();
 	module(const module& rhs);
