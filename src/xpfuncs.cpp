@@ -43,6 +43,280 @@ static std::string g_last_log_line;
 static size_t g_last_log_repeats = 0;
 static const size_t kRepeatSummaryInterval = 64;
 
+static int xlua_absindex(lua_State* L, int idx)
+{
+	if (idx < 0 && idx > LUA_REGISTRYINDEX)
+		return lua_gettop(L) + idx + 1;
+	return idx;
+}
+
+static bool xlua_ns_has_metatable(lua_State* L, int idx)
+{
+	int abs_idx = xlua_absindex(L, idx);
+	if (lua_getmetatable(L, abs_idx) == 0)
+		return false;
+	lua_pop(L, 1);
+	return true;
+}
+
+static bool xlua_ns_seems_like_prop(lua_State* L, int idx)
+{
+	int abs_idx = xlua_absindex(L, idx);
+	if (!lua_istable(L, abs_idx))
+		return false;
+	lua_getfield(L, abs_idx, "__get");
+	bool has_get = lua_isfunction(L, -1);
+	lua_pop(L, 1);
+	if (!has_get)
+		return false;
+	lua_getfield(L, abs_idx, "__set");
+	bool has_set = lua_isfunction(L, -1);
+	lua_pop(L, 1);
+	return has_set;
+}
+
+static bool xlua_ns_seems_like_object(lua_State* L, int idx)
+{
+	int abs_idx = xlua_absindex(L, idx);
+	if (!lua_istable(L, abs_idx))
+		return false;
+	if (xlua_ns_has_metatable(L, abs_idx))
+		return true;
+	lua_pushnil(L);
+	while (lua_next(L, abs_idx) != 0)
+	{
+		if (lua_isfunction(L, -1))
+		{
+			lua_pop(L, 2);
+			return true;
+		}
+		lua_pop(L, 1);
+	}
+	return false;
+}
+
+static void xlua_ns_rawset_field(lua_State* L, int table_idx, int key_idx, int value_idx)
+{
+	int abs_table = xlua_absindex(L, table_idx);
+	lua_pushvalue(L, key_idx);
+	lua_pushvalue(L, value_idx);
+	lua_rawset(L, abs_table);
+}
+
+static int xlua_ns_index(lua_State* L)
+{
+	if (!lua_istable(L, 1))
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	lua_getfield(L, 1, "functions");
+	int func_tbl = lua_gettop(L);
+	lua_pushvalue(L, 2);
+	lua_rawget(L, func_tbl); // -> functions[key]
+	if (lua_istable(L, -1))
+	{
+		lua_getfield(L, -1, "__get");
+		if (lua_isfunction(L, -1))
+		{
+			lua_pushvalue(L, -2);
+			lua_call(L, 1, 1);
+			lua_remove(L, func_tbl); // remove functions table
+			return 1;
+		}
+		lua_pop(L, 1); // pop __get
+	}
+	lua_pop(L, 2); // pop functions[key] and functions table
+
+	lua_getfield(L, 1, "values");
+	int val_tbl = lua_gettop(L);
+	lua_pushvalue(L, 2);
+	lua_rawget(L, val_tbl);
+	if (!lua_isnil(L, -1))
+	{
+		lua_remove(L, val_tbl);
+		return 1;
+	}
+	lua_pop(L, 2);
+
+	lua_getfield(L, 1, "parent");
+	if (!lua_isnil(L, -1))
+	{
+		lua_pushvalue(L, 2);
+		lua_gettable(L, -2);
+		return 1;
+	}
+	lua_pop(L, 1);
+	lua_pushnil(L);
+	return 1;
+}
+
+static void xlua_ns_wrap_table(lua_State* L, int ns_idx, int value_idx)
+{
+	int abs_val = xlua_absindex(L, value_idx);
+	lua_newtable(L);
+	int new_ns = lua_gettop(L);
+
+	lua_newtable(L);
+	lua_setfield(L, new_ns, "functions");
+	lua_newtable(L);
+	lua_setfield(L, new_ns, "values");
+	lua_newtable(L);
+	lua_setfield(L, new_ns, "raw_table_keys");
+	lua_pushnil(L);
+	lua_setfield(L, new_ns, "parent");
+
+	if (lua_getmetatable(L, xlua_absindex(L, ns_idx)))
+		lua_setmetatable(L, new_ns);
+
+	lua_getfield(L, new_ns, "functions");
+	int new_funcs = lua_gettop(L);
+	lua_getfield(L, new_ns, "values");
+	int new_vals = lua_gettop(L);
+
+	lua_pushnil(L);
+	while (lua_next(L, abs_val) != 0)
+	{
+		int key_idx = lua_gettop(L) - 1;
+		int val_idx = lua_gettop(L);
+		if (xlua_ns_seems_like_prop(L, val_idx))
+		{
+			xlua_ns_rawset_field(L, new_funcs, key_idx, val_idx);
+		}
+		else
+		{
+			xlua_ns_rawset_field(L, new_vals, key_idx, val_idx);
+		}
+		lua_pop(L, 1);
+	}
+
+	lua_pop(L, 2); // functions and values tables
+}
+
+static int xlua_ns_newindex(lua_State* L)
+{
+	if (!lua_istable(L, 1))
+		return 0;
+
+	lua_getfield(L, 1, "functions");
+	int func_tbl = lua_gettop(L);
+	lua_pushvalue(L, 2);
+	lua_rawget(L, func_tbl);
+	if (!lua_isnil(L, -1))
+	{
+		lua_getfield(L, -1, "__set");
+		if (lua_isfunction(L, -1))
+		{
+			lua_pushvalue(L, -2);
+			lua_pushvalue(L, 3);
+			lua_call(L, 2, 0);
+		}
+		lua_pop(L, 2); // prop + functions table
+		return 0;
+	}
+	lua_pop(L, 1); // pop nil
+	lua_pop(L, 1); // pop functions table
+
+	bool keep_table_verbatim = false;
+	lua_getfield(L, 1, "raw_table_keys");
+	if (lua_istable(L, -1))
+	{
+		lua_pushvalue(L, 2);
+		lua_rawget(L, -2);
+		keep_table_verbatim = !lua_isnil(L, -1);
+		lua_pop(L, 1);
+	}
+	lua_pop(L, 1); // raw_table_keys
+
+	lua_getfield(L, 1, "values");
+	int values_tbl = lua_gettop(L);
+
+	if (!keep_table_verbatim &&
+		lua_istable(L, 3) &&
+		!xlua_ns_seems_like_object(L, 3) &&
+		!xlua_ns_has_metatable(L, 3))
+	{
+		xlua_ns_wrap_table(L, 1, 3);
+		int wrapped_idx = lua_gettop(L);
+		lua_pushvalue(L, 2);
+		lua_pushvalue(L, wrapped_idx);
+		lua_rawset(L, values_tbl);
+		lua_pop(L, 2); // wrapped + values table
+		return 0;
+	}
+
+	lua_pushvalue(L, 2);
+	lua_pushvalue(L, 3);
+	lua_rawset(L, values_tbl);
+	lua_pop(L, 1); // values table
+	return 0;
+}
+
+static int xlua_ns_create_prop(lua_State* L)
+{
+	luaL_checktype(L, 1, LUA_TTABLE);
+	const char * name = luaL_checkstring(L, 2);
+	if (!lua_istable(L, 3) && !lua_isfunction(L, 3))
+		luaL_argerror(L, 3, "expected property or function");
+	lua_getfield(L, 1, "functions");
+	lua_pushvalue(L, 3);
+	lua_setfield(L, -2, name);
+	lua_pop(L, 1);
+	return 0;
+}
+
+static int XLuaCreateNamespace(lua_State* L)
+{
+	lua_newtable(L);
+	int ns = lua_gettop(L);
+
+	lua_newtable(L);
+	lua_setfield(L, ns, "functions");
+	lua_newtable(L);
+	lua_setfield(L, ns, "values");
+	lua_newtable(L);
+	lua_setfield(L, ns, "raw_table_keys");
+
+	lua_pushvalue(L, LUA_GLOBALSINDEX);
+	lua_setfield(L, ns, "parent");
+
+	lua_pushcfunction(L, xlua_ns_create_prop);
+	lua_setfield(L, ns, "create_prop");
+
+	lua_newtable(L);
+	int mt = lua_gettop(L);
+	lua_pushcfunction(L, xlua_ns_index);
+	lua_setfield(L, mt, "__index");
+	lua_pushcfunction(L, xlua_ns_newindex);
+	lua_setfield(L, mt, "__newindex");
+
+	// Defer pairs/ipairs/len to existing Lua helpers to keep behavior intact.
+	lua_getglobal(L, "namespace_pairs");
+	if (lua_isfunction(L, -1))
+		lua_setfield(L, mt, "__pairs");
+	else
+		lua_pop(L, 1);
+	lua_getglobal(L, "namespace_ipairs");
+	if (lua_isfunction(L, -1))
+		lua_setfield(L, mt, "__ipairs");
+	else
+		lua_pop(L, 1);
+	lua_getglobal(L, "namespace_len");
+	if (lua_isfunction(L, -1))
+		lua_setfield(L, mt, "__len");
+	else
+		lua_pop(L, 1);
+
+	lua_setmetatable(L, ns);
+	return 1;
+}
+
+// Helpers for namespace metamethods
+static int XLuaCreateNamespace(lua_State* L);
+static int xlua_ns_index(lua_State* L);
+static int xlua_ns_newindex(lua_State* L);
+
 // This is kind of a mess - Lua [annoyingly] doesn't give you a way to store a closure/Lua interpreter function
 // in C space.  The hack is to use luaL_ref to fill a new key in the registry table with a copy of ANY value from
 // the stack - since this is type agnostic and takes a strong reference it (1) prevents the closure from being 
@@ -522,7 +796,8 @@ static int XLuaReloadOnFlightChange(lua_State* L)
 	FUNC(XLuaRunTimer) \
 	FUNC(XLuaIsTimerScheduled) \
 	FUNC(XLuaGetTimerRemaining) \
-	FUNC(XLuaReloadOnFlightChange)
+	FUNC(XLuaReloadOnFlightChange) \
+	FUNC(XLuaCreateNamespace)
 
 std::string get_log_prefix(char l)
 {
