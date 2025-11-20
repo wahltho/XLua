@@ -467,13 +467,6 @@ function create_namespace()
 	return ret
 end
 
--- Use the C-backed namespace implementation when available.
-if XLuaCreateNamespace ~= nil then
-	function create_namespace()
-		return XLuaCreateNamespace()
-	end
-end
-
 -- Build a custom-built closure replacement for dofile that uses get-path to
 -- find same-dir scripts and does a setfenv to our NS
 function get_run_file_in_namespace(ns)
