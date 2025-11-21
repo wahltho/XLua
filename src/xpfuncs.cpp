@@ -44,6 +44,7 @@ static size_t g_last_log_repeats = 0;
 static const size_t kRepeatSummaryInterval = 64;
 static int g_logging_enabled = 1;
 static XPLMDataRef drLogEnabled = nullptr;
+static XPLMCommandRef g_log_toggle_cmd = nullptr;
 
 static int xlua_get_log_enabled(void* /*ref*/)
 {
@@ -54,6 +55,18 @@ static void xlua_set_log_enabled(void* /*ref*/, int value)
 {
 	g_logging_enabled = (value != 0);
 	emit_repeat_summary();
+}
+
+static int xlua_log_toggle_cb(XPLMCommandRef /*inCommand*/, XPLMCommandPhase inPhase, void* /*inRefcon*/)
+{
+	if (inPhase != xplm_CommandBegin)
+		return 1;
+	g_logging_enabled = !g_logging_enabled;
+	emit_repeat_summary();
+	char buf[96];
+	snprintf(buf, sizeof(buf), "%s logging %s\n", get_log_prefix().c_str(), g_logging_enabled ? "enabled" : "disabled");
+	XPLMDebugString(buf);
+	return 1;
 }
 
 static int xlua_absindex(lua_State* L, int idx)
@@ -966,6 +979,11 @@ void	add_xpfuncs_to_interp(lua_State * L)
 			nullptr, nullptr,
 			nullptr, nullptr,
 			nullptr);
+	}
+	if (g_log_toggle_cmd == nullptr)
+	{
+		g_log_toggle_cmd = XPLMCreateCommand("xlua/logging_toggle", "Toggle XLua logging output");
+		XPLMRegisterCommandHandler(g_log_toggle_cmd, xlua_log_toggle_cb, 1, nullptr);
 	}
 
 	// Register the custom print handler
