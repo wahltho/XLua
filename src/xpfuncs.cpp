@@ -23,6 +23,9 @@
 
 #include <XPLMUtilities.h>
 #include <XPLMDataAccess.h>
+#ifndef XPLM300
+#define XPLM300
+#endif
 
 #include "log.h"
 
@@ -978,6 +981,7 @@ void	add_xpfuncs_to_interp(lua_State * L)
 			nullptr, nullptr,
 			nullptr, nullptr,
 			nullptr, nullptr,
+			nullptr,
 			nullptr);
 	}
 	if (g_log_toggle_cmd == nullptr)
