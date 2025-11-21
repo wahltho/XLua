@@ -21,11 +21,12 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <XPLMUtilities.h>
-#include <XPLMDataAccess.h>
 #ifndef XPLM300
 #define XPLM300
 #endif
+
+#include <XPLMUtilities.h>
+#include <XPLMDataAccess.h>
 
 #include "log.h"
 
