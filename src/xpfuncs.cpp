@@ -31,6 +31,11 @@
 #include <XPLMUtilities.h>
 #include <XPLMDataAccess.h>
 
+extern "C" {
+XPLM_API XPLMCommandRef XPLMCreateCommand(const char* inName, const char* inDescription);
+XPLM_API void XPLMRegisterCommandHandler(XPLMCommandRef inCommand, XPLMCommandCallback_f inHandler, int inBefore, void* inRefcon);
+}
+
 #include "log.h"
 
 /*
