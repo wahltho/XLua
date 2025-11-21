@@ -48,7 +48,7 @@ static size_t g_last_log_repeats = 0;
 static const size_t kRepeatSummaryInterval = 64;
 static int g_logging_enabled = 1;
 static XPLMDataRef drLogEnabled = nullptr;
-static XPLMCommandRef g_log_toggle_cmd = nullptr;
+static XPLMCommandRef g_log_toggle_cmd = 0;
 
 static int xlua_get_log_enabled(void* /*ref*/)
 {
@@ -985,7 +985,7 @@ void	add_xpfuncs_to_interp(lua_State * L)
 			nullptr,
 			nullptr);
 	}
-	if (g_log_toggle_cmd == nullptr)
+	if (g_log_toggle_cmd == 0)
 	{
 		g_log_toggle_cmd = XPLMCreateCommand("xlua/logging_toggle", "Toggle XLua logging output");
 		XPLMRegisterCommandHandler(g_log_toggle_cmd, xlua_log_toggle_cb, 1, nullptr);
