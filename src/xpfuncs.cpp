@@ -42,6 +42,19 @@ static void emit_repeat_summary();
 static std::string g_last_log_line;
 static size_t g_last_log_repeats = 0;
 static const size_t kRepeatSummaryInterval = 64;
+static int g_logging_enabled = 1;
+static XPLMDataRef drLogEnabled = nullptr;
+
+static int xlua_get_log_enabled(void* /*ref*/)
+{
+	return g_logging_enabled;
+}
+
+static void xlua_set_log_enabled(void* /*ref*/, int value)
+{
+	g_logging_enabled = (value != 0);
+	emit_repeat_summary();
+}
 
 static int xlua_absindex(lua_State* L, int idx)
 {
@@ -866,6 +879,8 @@ static int l_my_print(lua_State *L)
 
 int log_message(lua_State *L, char const* const format, ...)
 {
+	if (!g_logging_enabled)
+		return 0;
 	char buffer[2048];
 	char lp = 'I';
 	std::string prefix(get_log_prefix());
@@ -937,6 +952,21 @@ void	add_xpfuncs_to_interp(lua_State * L)
 
 	// For logging
 	drSimRealTime = XPLMFindDataRef("sim/network/misc/network_time_sec");
+	if (drLogEnabled == nullptr)
+	{
+		drLogEnabled = XPLMRegisterDataAccessor(
+			"xlua/logging_enabled",
+			xplmType_Int,
+			1,
+			xlua_get_log_enabled,
+			xlua_set_log_enabled,
+			nullptr, nullptr,
+			nullptr, nullptr,
+			nullptr, nullptr,
+			nullptr, nullptr,
+			nullptr, nullptr,
+			nullptr);
+	}
 
 	// Register the custom print handler
 	lua_getglobal(L, "_G");
@@ -960,6 +990,8 @@ static void emit_repeat_summary()
 
 static void output_log_line(const std::string& line)
 {
+	if (!g_logging_enabled)
+		return;
 	if (line == g_last_log_line)
 	{
 		++g_last_log_repeats;
