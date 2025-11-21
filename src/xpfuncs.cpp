@@ -21,6 +21,9 @@
 #include <stdio.h>
 #include <assert.h>
 
+#ifndef XPLM210
+#define XPLM210
+#endif
 #ifndef XPLM300
 #define XPLM300
 #endif
