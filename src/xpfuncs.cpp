@@ -21,6 +21,9 @@
 #include <stdio.h>
 #include <assert.h>
 
+#ifndef XPLM200
+#define XPLM200
+#endif
 #ifndef XPLM210
 #define XPLM210
 #endif
@@ -30,11 +33,6 @@
 
 #include <XPLMUtilities.h>
 #include <XPLMDataAccess.h>
-
-extern "C" {
-XPLM_API XPLMCommandRef XPLMCreateCommand(const char* inName, const char* inDescription);
-XPLM_API void XPLMRegisterCommandHandler(XPLMCommandRef inCommand, XPLMCommandCallback_f inHandler, int inBefore, void* inRefcon);
-}
 
 #include "log.h"
 
@@ -56,7 +54,7 @@ static size_t g_last_log_repeats = 0;
 static const size_t kRepeatSummaryInterval = 64;
 static int g_logging_enabled = 1;
 static XPLMDataRef drLogEnabled = nullptr;
-static XPLMCommandRef g_log_toggle_cmd = 0;
+static XPLMCommandRef g_log_toggle_cmd = nullptr;
 
 static int xlua_get_log_enabled(void* /*ref*/)
 {
