@@ -46,6 +46,7 @@ struct	xlua_dref {
 	int						m_ours;		// 1 if we made, 0 if system
 	xlua_dref_notify_f		m_notify_func;
 	void *					m_notify_ref;
+	int						m_array_dim = -1; // cache for array length when known
 	
 	// IF we made the dataref, this is where our storage is!
 	double					m_number_storage;
@@ -308,6 +309,7 @@ xlua_dref *		xlua_find_dref(const char * name)
 	d->m_index = -1;
 	d->m_types = 0;
 	d->m_ours = 0;
+	d->m_array_dim = -1;
 	d->m_notify_func = NULL;
 	d->m_notify_ref = NULL;
 	d->m_number_storage = 0;
@@ -389,6 +391,7 @@ xlua_dref *		xlua_create_dref(lua_State* L, const char * name, xlua_dref_type ty
 	d->m_notify_ref = ref;
 	d->m_number_storage = 0;
 	d->m_types = type_mask;
+	d->m_array_dim = (type == xlua_array) ? dim : -1;
 
 	switch(type) {
 	case xlua_number:
@@ -452,11 +455,17 @@ int	xlua_dref_get_dim(xlua_dref * who)
 		return  1;
 	if(who->m_types & xplmType_FloatArray)
 	{
-		return XPLMGetDatavf(who->m_dref, NULL, 0, 0);
+		if (who->m_array_dim >= 0)
+			return who->m_array_dim;
+		who->m_array_dim = XPLMGetDatavf(who->m_dref, NULL, 0, 0);
+		return who->m_array_dim;
 	}
 	if(who->m_types & xplmType_IntArray)
 	{
-		return XPLMGetDatavi(who->m_dref, NULL, 0, 0);
+		if (who->m_array_dim >= 0)
+			return who->m_array_dim;
+		who->m_array_dim = XPLMGetDatavi(who->m_dref, NULL, 0, 0);
+		return who->m_array_dim;
 	}
 	if(who->m_types & (xplmType_Int|xplmType_Float|xplmType_Double))
 		return 1;

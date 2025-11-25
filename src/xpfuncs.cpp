@@ -538,7 +538,7 @@ static int XLuaGetDataRefType(lua_State * L)
 	case xlua_array:
 		{
 			char buf[256];
-			sprintf(buf,"array[%d]",xlua_dref_get_dim(d));
+			snprintf(buf, sizeof(buf), "array[%d]", xlua_dref_get_dim(d));
 			lua_pushstring(L,buf);
 		}
 		break;
@@ -797,7 +797,7 @@ static int XLuaIsTimerScheduled(lua_State * L)
 static int XLuaReloadOnFlightChange(lua_State* L)
 {
 	char log[512];
-	sprintf(log, "Aircraft scripts will be fully reloaded when flight details change.");
+	snprintf(log, sizeof(log), "Aircraft scripts will be fully reloaded when flight details change.");
 
 	// Log the fact that the plugin's been put into reinit-on-flight-change mode.
 	lua_pushstring(L, log);
@@ -842,7 +842,7 @@ std::string get_log_prefix(char l)
 	hrs = (int)(real_time / 3600.0f);
 	min = (int)(real_time / 60.0f) - (int)(hrs * 60.0f);
 	sec = real_time - (hrs * 3600.0f) - (min * 60.0f);
-	sprintf(prefix, "%d:%02d:%06.3f %c/LUA: ", (int)hrs, (int)min, sec, l);
+	snprintf(prefix, sizeof(prefix), "%d:%02d:%06.3f %c/LUA: ", (int)hrs, (int)min, sec, l);
 
 	return std::string(prefix);
 }
