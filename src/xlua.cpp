@@ -3,7 +3,7 @@
 //	See LICENSE.txt for the full terms of the license.
 
 
-#define VERSION "1.3.5r1"
+#define VERSION "1.3.6r1"
 
 #include <stdio.h>
 #include <string.h>
@@ -62,12 +62,17 @@ static vector<module *>g_modules;
 static XPLMFlightLoopID	g_pre_loop = NULL;
 static XPLMFlightLoopID	g_post_loop = NULL;
 static bool				g_is_acf_inited = false;
+static vector<string>    g_loaded_module_names;
 XPLMDataRef				g_replay_active = NULL;
 XPLMDataRef				g_sim_period = NULL;
 XPLMCommandRef			reset_cmd = nullptr;
 XPLMMenuID				PluginMenu = 0;
 
 static string plugin_base_path;
+static time_t g_scripts_dir_mtime = 0;
+static time_t g_init_script_mtime = 0;
+static time_t g_max_script_mtime = 0;
+static bool   g_has_script_signature = false;
 
 #if IBM
 #define XLUA_STAT_STRUCT struct _stat
@@ -92,6 +97,46 @@ static bool get_mod_time(const string& path, time_t& mod_time)
 	if (XLUA_STAT(path.c_str(), &info) != 0)
 		return false;
 	mod_time = info.st_mtime;
+	return true;
+}
+
+static bool compute_script_signature(time_t& scripts_dir_mtime,
+									 time_t& init_mtime,
+									 time_t& max_script_mtime)
+{
+	time_t dir_mtime = 0;
+	time_t init_time = 0;
+	time_t max_time = 0;
+
+	string scripts_dir_path(plugin_base_path);
+	scripts_dir_path += "scripts";
+	if (!get_mod_time(scripts_dir_path, dir_mtime))
+		return false;
+
+	string init_script_path(plugin_base_path);
+	init_script_path += "init.lua";
+	if (!get_mod_time(init_script_path, init_time))
+		return false;
+
+	for (const string& module_name : g_loaded_module_names)
+	{
+		string script_path(scripts_dir_path);
+		script_path += "/";
+		script_path += module_name;
+		script_path += "/";
+		script_path += module_name;
+		script_path += ".lua";
+
+		time_t script_time = 0;
+		if (!get_mod_time(script_path, script_time))
+			return false;
+		if (script_time > max_time)
+			max_time = script_time;
+	}
+
+	scripts_dir_mtime = dir_mtime;
+	init_mtime = init_time;
+	max_script_mtime = max_time;
 	return true;
 }
 
@@ -312,6 +357,7 @@ void InitScripts(void)
 	{
 		std::sort(module_names.begin(), module_names.end());
 	}
+	g_loaded_module_names = module_names;
 	for (const string& module_name : module_names)
 	{
 		string mod_path(scripts_dir_path);
@@ -340,6 +386,19 @@ void InitScripts(void)
 			lj_alloc_f,
 			NULL));
 	}
+
+	time_t dir_time = 0, init_time = 0, max_script_time = 0;
+	if (compute_script_signature(dir_time, init_time, max_script_time))
+	{
+		g_scripts_dir_mtime = dir_time;
+		g_init_script_mtime = init_time;
+		g_max_script_mtime = max_script_time;
+		g_has_script_signature = true;
+	}
+	else
+	{
+		g_has_script_signature = false;
+	}
 }
 
 void CleanupScripts(void)
@@ -366,6 +425,22 @@ int ResetState(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void* inRefco
 	// command in init.lua for example...
 	if (inPhase == xplm_CommandBegin && g_is_acf_inited)
 	{
+		const bool force_reload = (inRefcon == nullptr);
+		if (!force_reload && g_has_script_signature)
+		{
+			time_t dir_time = 0, init_time = 0, max_script_time = 0;
+			if (compute_script_signature(dir_time, init_time, max_script_time))
+			{
+				if (dir_time == g_scripts_dir_mtime &&
+					init_time == g_init_script_mtime &&
+					max_script_time == g_max_script_mtime)
+				{
+					// No changes detected; skip reload.
+					return 0;
+				}
+			}
+		}
+
 		// Set to false to clear state on this too. Provided the XLuaReloadOnFlightChange() call is still in the scripts,
 		// it will be immediately set back to true from the XPLM_MSG_AIRPORT_LOADED code below.
 		g_bReloadOnFlightChange = false;
