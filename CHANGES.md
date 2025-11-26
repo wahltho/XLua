@@ -1,28 +1,40 @@
-# XLua Changes (Performance + Logging)
+# XLua Changes (Performance + Stability)
 
-This summarizes the runtime changes we made while profiling XLua for scripted
-aircraft (e.g., the Zibo mod).
+This tracks the runtime optimizations and controls added while profiling XLua
+for script-heavy aircraft (e.g., Zibo).
 
-## Module Loading & Ordering
+## 1.3.7r1
+* Clear the command lookup cache on shutdown/reload to avoid stale handles after script reloads (fixes default commands breaking post-reload).
+* Keep JIT opt-in controls: dataref `xlua/jit_enabled` (default off) and command `xlua/jit_toggle` to flip JIT at runtime without touching scripts.
 
-* Directory enumeration now batches `XPLMGetDirectoryContents` calls and writes
-  a `.xlua_manifest` cache. Subsequent reloads reuse the cached module list
-  unless the `scripts/` directory changes.
-* The loader checks for `module/module.lua` before instantiating and skips
-  missing folders with a single warning instead of aborting.
-* Modules are instantiated in alphabetical order to guarantee a stable load
-  sequence regardless of host filesystem quirks.
+## 1.3.7b1
+* Added JIT runtime toggle: new dataref `xlua/jit_enabled` (default 0) plus command to flip it in-flight for testing.
+* Logging and command toggles remain opt-in (no script changes required).
 
-## Hook Discovery & Call Reduction
+## 1.3.6r1
+* Reload guard: skip reloading modules when the scripts directory mtimes have not changed.
+* Added logging toggle dataref `xlua/logging_enabled` (default on) and command `xlua/logging_toggle` to reduce noise without repacking scripts.
 
-* Each module records whether it actually implements `before_physics`,
-  `after_physics`, or `after_replay`.
-* The flight loops only invoke modules that flagged those hooks, removing two
+## 1.3.5r1
+* Command lookup caching and cache-invalidate to cut per-command overhead.
+* Dataref type/dimension caching for arrays to avoid repeated XP SDK queries.
+* Safer logging (snprintf usage) and small handler micro-optimizations.
+
+## Earlier performance changes
+
+### Module Loading & Ordering
+* Batch `XPLMGetDirectoryContents` and write a `.xlua_manifest` cache; reuse on reload unless `scripts/` changes.
+* Check for `module/module.lua` before instantiating; skip missing folders with a single warning.
+* Instantiate modules alphabetically for a stable load order.
+
+### Hook Discovery & Call Reduction
+* Each module records whether it implements `before_physics`, `after_physics`,
+  or `after_replay`.
+* Flight loops only invoke modules that flagged those hooks, removing two
   redundant Lua calls per frame for modules that never use the callbacks.
 
-## Logging Improvements
-
-* Added a simple deduplicator so repeated log lines collapse into “Previous
-  message repeated N times” summaries, reducing log spam on Windows/macOS.
-* Flush the deduplicated queue when the plugin stops to ensure the final
-  summary makes it into the log.
+### Logging Improvements
+* Deduplicate repeated log lines into “Previous message repeated N times”
+  summaries to cut spam on Windows/macOS.
+* Flush the deduplicated queue when the plugin stops so the final summary is
+  written.
