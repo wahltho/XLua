@@ -13,6 +13,17 @@ XLua is **not** meant to be an "official" Lua plugin for X-Plane, and it definit
 * Clear cached command lookups on shutdown/reload to prevent stale handles after script reloads (fixes default commands breaking post-reload).
 * Added opt-in LuaJIT toggles: dataref `xlua/jit_enabled` (default 0) and command `xlua/jit_toggle` to flip JIT at runtime without editing scripts.
 
+**1.3.7b1 - 11/25/2025**
+* First release with runtime JIT controls: opt-in dataref and command to toggle LuaJIT in flight for profiling/testing without script edits.
+
+**1.3.6r1 - 11/24/2025**
+* Reload guard: skip reloading modules when scripts/ mtimes are unchanged.
+* Added logging toggle dataref `xlua/logging_enabled` (default 1) plus command `xlua/logging_toggle` to suppress/restore XLua log chatter.
+
+**1.3.5r1 - 11/23/2025**
+* Cached command lookups and cached dataref type/dimension queries to cut per-frame overhead in heavy scripts.
+* Safety/cleanup: snprintf use for logging, warning cleanup, and small handler/array type-caching optimizations.
+
 **1.3.2r1 - 11/18/2025**
 * Script discovery now caches the module list in `.xlua_manifest`, so aircraft with many XLua scripts load faster and are enumerated deterministically.
 * Modules remember whether they implement `before_physics`, `after_physics`, or `after_replay`, avoiding unnecessary Lua lookups during each frame.
