@@ -44,6 +44,7 @@
  */
 
 static XPLMDataRef drSimRealTime = nullptr;
+void xlua_apply_jit_setting(bool enable);
 
 static int l_my_print(lua_State* L);
 static void output_log_line(const std::string& line);
@@ -54,6 +55,8 @@ static size_t g_last_log_repeats = 0;
 static const size_t kRepeatSummaryInterval = 64;
 static int g_logging_enabled = 1;
 static XPLMDataRef drLogEnabled = nullptr;
+static int g_jit_enabled = 0;
+static XPLMDataRef drJitEnabled = nullptr;
 static XPLMCommandRef g_log_toggle_cmd = nullptr;
 
 static int xlua_get_log_enabled(void* /*ref*/)
@@ -61,10 +64,21 @@ static int xlua_get_log_enabled(void* /*ref*/)
 	return g_logging_enabled;
 }
 
+static int xlua_get_jit_enabled(void* /*ref*/)
+{
+	return g_jit_enabled;
+}
+
 static void xlua_set_log_enabled(void* /*ref*/, int value)
 {
 	g_logging_enabled = (value != 0);
 	emit_repeat_summary();
+}
+
+static void xlua_set_jit_enabled(void* /*ref*/, int value)
+{
+	g_jit_enabled = (value != 0);
+	xlua_apply_jit_setting(g_jit_enabled != 0);
 }
 
 static int xlua_log_toggle_cb(XPLMCommandRef /*inCommand*/, XPLMCommandPhase inPhase, void* /*inRefcon*/)
@@ -995,6 +1009,22 @@ void	add_xpfuncs_to_interp(lua_State * L)
 	{
 		g_log_toggle_cmd = XPLMCreateCommand("xlua/logging_toggle", "Toggle XLua logging output");
 		XPLMRegisterCommandHandler(g_log_toggle_cmd, xlua_log_toggle_cb, 1, nullptr);
+	}
+	if (drJitEnabled == nullptr)
+	{
+		drJitEnabled = XPLMRegisterDataAccessor(
+			"xlua/jit_enabled",
+			xplmType_Int,
+			1,
+			xlua_get_jit_enabled,
+			xlua_set_jit_enabled,
+			nullptr, nullptr,
+			nullptr, nullptr,
+			nullptr, nullptr,
+			nullptr, nullptr,
+			nullptr, nullptr,
+			nullptr,
+			nullptr);
 	}
 
 	// Register the custom print handler

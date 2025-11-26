@@ -54,6 +54,8 @@ public:
 			void		post_physics();
 			void		post_replay();
 
+			lua_State*	interp() const { return m_interp; }
+
 			bool		has_pre_physics() const { return m_callout_refs[kCalloutBeforePhysics] != LUA_NOREF; }
 			bool		has_post_physics() const { return m_callout_refs[kCalloutAfterPhysics] != LUA_NOREF; }
 			bool		has_post_replay() const { return m_callout_refs[kCalloutAfterReplay] != LUA_NOREF; }

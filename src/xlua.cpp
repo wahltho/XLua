@@ -73,6 +73,7 @@ static time_t g_scripts_dir_mtime = 0;
 static time_t g_init_script_mtime = 0;
 static time_t g_max_script_mtime = 0;
 static bool   g_has_script_signature = false;
+static bool   g_jit_runtime_enabled = false;
 
 #if IBM
 #define XLUA_STAT_STRUCT struct _stat
@@ -138,6 +139,30 @@ static bool compute_script_signature(time_t& scripts_dir_mtime,
 	init_mtime = init_time;
 	max_script_mtime = max_time;
 	return true;
+}
+
+static void apply_jit_setting_to_state(lua_State* L, bool enable)
+{
+	if (L == nullptr)
+		return;
+
+	if (luaL_dostring(L,
+			enable ?
+			"local ok, jitmod = pcall(require, 'jit'); if ok and jitmod then jitmod.on(); jitmod.flush(true); end" :
+			"local ok, jitmod = pcall(require, 'jit'); if ok and jitmod then jitmod.off(); end"))
+	{
+		// swallow errors silently; JIT optional
+		lua_pop(L, 1);
+	}
+}
+
+void xlua_apply_jit_setting(bool enable)
+{
+	g_jit_runtime_enabled = enable;
+	for (vector<module*>::iterator m = g_modules.begin(); m != g_modules.end(); ++m)
+	{
+		apply_jit_setting_to_state((*m)->interp(), enable);
+	}
 }
 
 static bool read_manifest(const string& manifest_path,
@@ -622,6 +647,12 @@ PLUGIN_API void XPluginReceiveMessage(
 			
 			for(vector<module *>::iterator m = g_modules.begin(); m != g_modules.end(); ++m)
 				(*m)->acf_load();
+
+			if (g_jit_runtime_enabled)
+			{
+				for (vector<module*>::iterator m = g_modules.begin(); m != g_modules.end(); ++m)
+					apply_jit_setting_to_state((*m)->interp(), true);
+			}
 
 			g_is_acf_inited = true;
 		}
