@@ -3,7 +3,7 @@
 //	See LICENSE.txt for the full terms of the license.
 
 
-#define VERSION "1.3.6r1"
+#define VERSION "1.3.7b1"
 
 #include <stdio.h>
 #include <string.h>
