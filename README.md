@@ -9,6 +9,10 @@ XLua is developed internally by Laminar Research and is intended to help our int
 XLua is **not** meant to be an "official" Lua plugin for X-Plane, and it definitely does not replace any of the existing Lua plugins, all of which have significantly more features than XLua itself.
 
 ## Release Notes
+**1.3.7r1 - 11/26/2025**
+* Clear cached command lookups on shutdown/reload to prevent stale handles after script reloads (fixes default commands breaking post-reload).
+* Added opt-in LuaJIT toggles: dataref `xlua/jit_enabled` (default 0) and command `xlua/jit_toggle` to flip JIT at runtime without editing scripts.
+
 **1.3.2r1 - 11/18/2025**
 * Script discovery now caches the module list in `.xlua_manifest`, so aircraft with many XLua scripts load faster and are enumerated deterministically.
 * Modules remember whether they implement `before_physics`, `after_physics`, or `after_replay`, avoiding unnecessary Lua lookups during each frame.
@@ -84,6 +88,15 @@ The adf module has a second lua file - for this file to be used, it must be “i
 Sub-folders in the scripts folder are not allowed - all modules must be within “scripts”.
 
 The file “init.lua” is part of the XLua plugin itself and should not be edited or removed.
+
+### Runtime controls: logging & JIT
+
+These controls let you toggle expensive diagnostics and JIT at runtime without touching scripts:
+
+* Dataref `xlua/logging_enabled` (int, default 1): set to 0 to suppress XLua’s log chatter; set back to 1 to re-enable. Command `xlua/logging_toggle` flips it.
+* Dataref `xlua/jit_enabled` (int, default 0): opt-in toggle for LuaJIT; set to 1 to enable JIT, 0 to disable. Command `xlua/jit_toggle` flips it in flight.
+
+Both datarefs are writable; the commands are useful for keybindings or testing without repackaging scripts.
 
 ### How a Module Script Runs
 
