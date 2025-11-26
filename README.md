@@ -24,10 +24,18 @@ XLua is **not** meant to be an "official" Lua plugin for X-Plane, and it definit
 * Cached command lookups and cached dataref type/dimension queries to cut per-frame overhead in heavy scripts.
 * Safety/cleanup: snprintf use for logging, warning cleanup, and small handler/array type-caching optimizations.
 
+**1.3.4r1 - 11/22/2025**
+* Runtime logging toggle: dataref `xlua/logging_enabled` (default 1) and command `xlua/logging_toggle` to silence/restore XLua logging without repacking scripts.
+* Build pipeline tweaks (codesign opt-out, Windows toolset) to keep cross-platform builds consistent.
+
+**1.3.3r1 - 11/19/2025**
+* Cached Lua callback references per module to avoid repeated name lookups each frame.
+* Faster namespace/dataref lookups to reduce interpreter overhead in script-heavy aircraft.
+
 **1.3.2r1 - 11/18/2025**
-* Script discovery now caches the module list in `.xlua_manifest`, so aircraft with many XLua scripts load faster and are enumerated deterministically.
-* Modules remember whether they implement `before_physics`, `after_physics`, or `after_replay`, avoiding unnecessary Lua lookups during each frame.
-* Logging consolidates duplicate messages and flushes cleanly on shutdown, reducing spam in `Log.txt` and improving troubleshooting performance.
+* Script discovery cache (`.xlua_manifest`) for faster, deterministic module enumeration on load/reload.
+* Hook filtering: only call modules that actually implement `before_physics`, `after_physics`, or `after_replay`, removing redundant per-frame Lua calls.
+* Log deduplication and orderly shutdown flush to cut log spam while retaining last messages.
 
 **1.3.0r2 - 09/05/2024**
 * Adds `get_timer_remaining` stub to init.lua.
