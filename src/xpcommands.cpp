@@ -311,6 +311,7 @@ void xlua_cmd_cleanup()
 	}
 
 	assert(s_cmds == nullptr);
+	s_cmd_lookup.clear();
 }
 
 void xlua_cmd_mark_reload_on_change()
