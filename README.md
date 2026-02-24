@@ -9,6 +9,10 @@ XLua is developed internally by Laminar Research and is intended to help our int
 XLua is **not** meant to be an "official" Lua plugin for X-Plane, and it definitely does not replace any of the existing Lua plugins, all of which have significantly more features than XLua itself.
 
 ## Release Notes
+**1.3.7r2 - 02/24/2026**
+* Fix memory corruption in module allocation.
+* Rebuild required for all three platforms (mac/win/lin).
+
 **1.3.7r1 - 11/26/2025**
 * Clear cached command lookups on shutdown/reload to prevent stale handles after script reloads (fixes default commands breaking post-reload).
 * Added opt-in LuaJIT toggles: dataref `xlua/jit_enabled` (default 0) and command `xlua/jit_toggle` to flip JIT at runtime without editing scripts.
