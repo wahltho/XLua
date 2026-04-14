@@ -3,7 +3,7 @@
 //	See LICENSE.txt for the full terms of the license.
 
 
-#define VERSION "1.3.7r2"
+#define VERSION "1.3.7r3"
 
 #include <stdio.h>
 #include <string.h>
@@ -74,6 +74,11 @@ static time_t g_init_script_mtime = 0;
 static time_t g_max_script_mtime = 0;
 static bool   g_has_script_signature = false;
 static bool   g_jit_runtime_enabled = false;
+
+enum ResetStateFlags {
+	kResetStateSkipAirportLoadedCallback = 1 << 0,
+	kResetStateForceReload = 1 << 1
+};
 
 #if IBM
 #define XLUA_STAT_STRUCT struct _stat
@@ -450,7 +455,9 @@ int ResetState(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void* inRefco
 	// command in init.lua for example...
 	if (inPhase == xplm_CommandBegin && g_is_acf_inited)
 	{
-		const bool force_reload = (inRefcon == nullptr);
+		const intptr_t flags = reinterpret_cast<intptr_t>(inRefcon);
+		const bool skip_airport_loaded_callback = (flags & kResetStateSkipAirportLoadedCallback) != 0;
+		const bool force_reload = (inRefcon == nullptr) || ((flags & kResetStateForceReload) != 0);
 		if (!force_reload && g_has_script_signature)
 		{
 			time_t dir_time = 0, init_time = 0, max_script_time = 0;
@@ -473,7 +480,7 @@ int ResetState(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void* inRefco
 		CleanupScripts();
 		InitScripts();
 
-		if (!(intptr_t)inRefcon)	// Recursion block - ResetState() can be called from XPluginReceiveMessage().
+		if (!skip_airport_loaded_callback)	// Recursion block - ResetState() can be called from XPluginReceiveMessage().
 		{
 			XPluginReceiveMessage(XPLM_PLUGIN_XPLANE, XPLM_MSG_AIRPORT_LOADED, nullptr);
 		}
@@ -636,7 +643,11 @@ PLUGIN_API void XPluginReceiveMessage(
 	case XPLM_MSG_AIRPORT_LOADED:
 		if (g_bReloadOnFlightChange && g_is_acf_inited)
 		{
-			ResetState(reset_cmd, xplm_CommandBegin, (void*)(intptr_t)1);
+			ResetState(
+				reset_cmd,
+				xplm_CommandBegin,
+				reinterpret_cast<void*>(static_cast<intptr_t>(
+					kResetStateSkipAirportLoadedCallback | kResetStateForceReload)));
 		}
 
 		if (!g_is_acf_inited)

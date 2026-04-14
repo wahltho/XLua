@@ -47,10 +47,11 @@ static XPLMDataRef drSimRealTime = nullptr;
 void xlua_apply_jit_setting(bool enable);
 
 static int l_my_print(lua_State* L);
-static void output_log_line(const std::string& line);
+static void output_log_line(const std::string& line, const std::string& dedupe_key, char level);
 static void emit_repeat_summary();
 
 static std::string g_last_log_line;
+static std::string g_last_log_key;
 static size_t g_last_log_repeats = 0;
 static const size_t kRepeatSummaryInterval = 64;
 static int g_logging_enabled = 1;
@@ -59,6 +60,7 @@ static int g_jit_enabled = 0;
 static XPLMDataRef drJitEnabled = nullptr;
 static XPLMCommandRef g_log_toggle_cmd = nullptr;
 static XPLMCommandRef g_jit_toggle_cmd = nullptr;
+static char g_last_log_level = 'I';
 
 static int xlua_get_log_enabled(void* /*ref*/)
 {
@@ -880,7 +882,7 @@ static int l_my_print(lua_State *L)
 
 	// Unwieldy... but on the other hand, lua debug statements could in theory come from anywhere, from
 	// several different instances of xlua at the same time so the full path probably is needed.
-	output_log_line(prefix + me->get_log_path() + "\n");
+	output_log_line(prefix + me->get_log_path() + "\n", me->get_log_path() + "\n", 'I');
 
 	std::string output;
 	char num_buf[128];
@@ -919,7 +921,7 @@ static int l_my_print(lua_State *L)
 	}
 
 	output += "\n";
-	output_log_line(prefix + output);
+	output_log_line(prefix + output, output, 'I');
 
 	return 0;
 }
@@ -964,7 +966,7 @@ int log_message(lua_State *L, char const* const format, ...)
 			
 			std::string stack_line(prefix);
 			stack_line += buffer;
-			output_log_line(stack_line);
+			output_log_line(stack_line, buffer, lp);
 			buffer[0] = 0;
 
 			line_prefix = " -> ";
@@ -980,7 +982,7 @@ int log_message(lua_State *L, char const* const format, ...)
 	std::string output(prefix);
 	output += buffer;
 
-	output_log_line(output);
+	output_log_line(output, buffer, lp);
 
 	return result;
 }
@@ -1055,18 +1057,18 @@ static void emit_repeat_summary()
 
 	char buffer[128];
 	snprintf(buffer, sizeof(buffer), "Previous message repeated %zu additional times\n", g_last_log_repeats);
-	std::string summary = get_log_prefix();
+	std::string summary = get_log_prefix(g_last_log_level);
 	summary += buffer;
 	XPLMDebugString(summary.c_str());
 	printf("%s", summary.c_str());
 	g_last_log_repeats = 0;
 }
 
-static void output_log_line(const std::string& line)
+static void output_log_line(const std::string& line, const std::string& dedupe_key, char level)
 {
 	if (!g_logging_enabled)
 		return;
-	if (line == g_last_log_line)
+	if (level == g_last_log_level && dedupe_key == g_last_log_key)
 	{
 		++g_last_log_repeats;
 		if (g_last_log_repeats >= kRepeatSummaryInterval)
@@ -1078,6 +1080,8 @@ static void output_log_line(const std::string& line)
 
 	emit_repeat_summary();
 	g_last_log_line = line;
+	g_last_log_key = dedupe_key;
+	g_last_log_level = level;
 	g_last_log_repeats = 0;
 	XPLMDebugString(line.c_str());
 	printf("%s", line.c_str());
@@ -1087,4 +1091,6 @@ void xlua_flush_log_queue(void)
 {
 	emit_repeat_summary();
 	g_last_log_line.clear();
+	g_last_log_key.clear();
+	g_last_log_level = 'I';
 }

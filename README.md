@@ -9,6 +9,10 @@ XLua is developed internally by Laminar Research and is intended to help our int
 XLua is **not** meant to be an "official" Lua plugin for X-Plane, and it definitely does not replace any of the existing Lua plugins, all of which have significantly more features than XLua itself.
 
 ## Release Notes
+**1.3.7r3 - 04/14/2026**
+* Restore forced full reload behavior for `XLuaReloadOnFlightChange()`.
+* Fix repeated-log deduplication so identical messages collapse correctly again.
+
 **1.3.7r2 - 02/24/2026**
 * Fix memory corruption in module allocation.
 * Rebuild required for all three platforms (mac/win/lin).
