@@ -2,7 +2,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+PLUGIN_ROOT="${XLUA_PLUGIN_ROOT:-${WORKSPACE_ROOT}/xlua}"
+
+if [[ ! -f "${PLUGIN_ROOT}/xlua.vcxproj" ]]; then
+	echo "Cannot find xlua plugin repo at ${PLUGIN_ROOT}. Set XLUA_PLUGIN_ROOT to override." >&2
+	exit 1
+fi
 
 if ! command -v prlctl >/dev/null 2>&1; then
 	echo "prlctl not found. Install Parallels CLI tools before running this script." >&2
@@ -56,7 +62,7 @@ EOF
 echo "Building XLua in VM '${PARALLELS_VM}' (MSBuild: ${MSBUILD_PATH})..."
 prlctl exec "${PARALLELS_VM}" -- powershell -NoProfile -NonInteractive -Command "$POWERSHELL_BLOCK"
 
-WIN_OUTPUT_DIR="${REPO_ROOT}/Release/plugins/win_x64"
+WIN_OUTPUT_DIR="${PLUGIN_ROOT}/Release/plugins/win_x64"
 WIN_XPL="${WIN_OUTPUT_DIR}/xlua.xpl"
 WIN_PDB="${WIN_OUTPUT_DIR}/xlua.pdb"
 
@@ -65,10 +71,10 @@ if [[ ! -f "${WIN_XPL}" ]]; then
 	exit 1
 fi
 
-mkdir -p "${REPO_ROOT}/jenkins/build_products"
-cp "${WIN_XPL}" "${REPO_ROOT}/jenkins/build_products/xlua_win.xpl"
+mkdir -p "${PLUGIN_ROOT}/jenkins/build_products"
+cp "${WIN_XPL}" "${PLUGIN_ROOT}/jenkins/build_products/xlua_win.xpl"
 if [[ -f "${WIN_PDB}" ]]; then
-	cp "${WIN_PDB}" "${REPO_ROOT}/jenkins/build_products/xlua_win.pdb"
+	cp "${WIN_PDB}" "${PLUGIN_ROOT}/jenkins/build_products/xlua_win.pdb"
 fi
 
 echo "Windows artifacts copied to jenkins/build_products/."

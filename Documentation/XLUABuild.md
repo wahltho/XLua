@@ -10,6 +10,9 @@ artifacts land in a predictable staging directory.
 
 * Work from the repository root (`~/Documents/Projects/xlua/xlua` in this
   setup).
+* The root-level workbench wrappers under `tools/workbench/` automatically
+  switch into the nested plugin repo `xlua/`. Override with
+  `XLUA_PLUGIN_ROOT=/path/to/xlua` if needed.
 * The platform selector is the `PLATFORM` environment variable consumed by
   `jenkins/build.sh` (`APL`, `IBM`, or `LIN`). See `jenkins/build.sh` for the
   exact command lines per platform (`xcodebuild`/`make`/`MSBuild`) and the
@@ -23,6 +26,29 @@ artifacts land in a predictable staging directory.
   and per-platform folders). Mirror the `.xpl` files from
   `jenkins/build_products/` into `deploy/{mac_x64,lin_x64,win_x64}/xlua.xpl`
   before zipping.
+
+## Quick Start
+
+From the root workspace (`~/Documents/Projects/xlua`):
+
+```bash
+# macOS
+export XPLANE_SDK_ROOT="$PWD/xlua/SDK"
+./tools/workbench/build_mac.sh
+
+# Linux
+./tools/workbench/build_linux.sh
+# or, if Podman is unhealthy on this host:
+CONTAINER_RUNTIME=docker ./tools/workbench/build_linux.sh
+
+# Windows
+PARALLELS_VM="Windows 11" \
+WIN_REPO_PATH="\\\\Mac\\Home\\Documents\\Projects\\xlua\\xlua" \
+./tools/workbench/build_win.sh
+```
+
+All three wrappers switch into the nested plugin repo automatically and write
+artifacts to `xlua/jenkins/build_products/`.
 
 ## macOS (APL)
 
@@ -42,6 +68,13 @@ Reference: `tools/workbench/build_mac.sh`, `jenkins/build.sh` (`APL` case).
    the archive step simply produces `xlua_mac.xpl` (universal binary) under
    `jenkins/build_products/`.
 
+Known-good wrapper invocation from the root workspace:
+
+```bash
+export XPLANE_SDK_ROOT="$PWD/xlua/SDK"
+./tools/workbench/build_mac.sh
+```
+
 This is the native equivalent of BPB’s mac build section: everything stays on
 the host except optional notarization, so no containers are involved.
 
@@ -50,14 +83,17 @@ the host except optional notarization, so no containers are involved.
 Reference: `tools/workbench/build_linux.sh`, `Makefile`, `jenkins/build.sh`
 (`LIN` case).
 
-1. Install Podman on macOS (or Docker if you swap the container runtime) and
-   run `podman machine init && podman machine start` once, similar to spinning
-   up the `bpb-cross` Docker VM described in the BPB guide.
+1. Install Podman or Docker on macOS. If you use Podman, run
+   `podman machine init && podman machine start` once, similar to spinning up
+   the `bpb-cross` Docker VM described in the BPB guide.
 2. Ensure you have enough disk/bandwidth inside the VM: the first run pulls
    `ubuntu:22.04` and installs `build-essential`, `cmake`, `ninja-build`, and
    `pkg-config`.
 3. Execute `./tools/workbench/build_linux.sh`. The wrapper:
+   * Prefers a working Podman setup, but falls back to Docker when Podman is
+     installed but unreachable.
    * Mounts the repo into `/work` inside the container.
+   * Uses `--platform=linux/amd64` automatically on Apple Silicon.
    * Sets `PLATFORM=LIN` and runs `./jenkins/build.sh`.
    * Calls the root `Makefile` (`make clean && make`) to produce
      `build/xlua/64/lin.xpl`, then copies it into
@@ -66,6 +102,15 @@ Reference: `tools/workbench/build_linux.sh`, `Makefile`, `jenkins/build.sh`
 This reproduces the Docker-based cross-build workflow from BPB without having
 to maintain host-side toolchains. Set `LINUX_BUILD_IMAGE` if you need a
 different base image (e.g., matching the deployment distro).
+
+Known-good wrapper invocations from the root workspace:
+
+```bash
+./tools/workbench/build_linux.sh
+
+# Force Docker if Podman reports stale machine metadata but `podman info` fails.
+CONTAINER_RUNTIME=docker ./tools/workbench/build_linux.sh
+```
 
 ## Windows (IBM)
 
@@ -91,6 +136,14 @@ Reference: `tools/workbench/README.md`, `jenkins/build.sh` (`IBM` case),
    `Release\plugins\win_x64\`. Copy them into
    `jenkins/build_products/{xlua_win.xpl,xlua_win.pdb}` before mirroring the
    `.xpl` into `deploy/win_x64/`.
+
+Known-good wrapper invocation from the root workspace:
+
+```bash
+PARALLELS_VM="Windows 11" \
+WIN_REPO_PATH="\\\\Mac\\Home\\Documents\\Projects\\xlua\\xlua" \
+./tools/workbench/build_win.sh
+```
 
 ## Suggested Workflow
 

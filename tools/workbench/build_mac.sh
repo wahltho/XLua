@@ -2,7 +2,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+PLUGIN_ROOT="${XLUA_PLUGIN_ROOT:-${WORKSPACE_ROOT}/xlua}"
+
+if [[ ! -f "${PLUGIN_ROOT}/jenkins/build.sh" ]]; then
+	echo "Cannot find xlua plugin repo at ${PLUGIN_ROOT}. Set XLUA_PLUGIN_ROOT to override." >&2
+	exit 1
+fi
 
 if ! command -v xcodebuild >/dev/null 2>&1; then
 	echo "xcodebuild not found. Install Xcode and accept the license first." >&2
@@ -18,6 +24,6 @@ if [[ -z "${XPLANE_SDK_ROOT}" ]]; then
 	exit 1
 fi
 
-cd "${REPO_ROOT}"
+cd "${PLUGIN_ROOT}"
 echo "Building macOS plugin via jenkins/build.sh (codesign: ${WANT_CODESIGN})..."
 ./jenkins/build.sh

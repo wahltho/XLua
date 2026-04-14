@@ -2,11 +2,18 @@
 
 This directory contains small wrappers that mirror the Jenkins build matrix so
 you can invoke the existing scripts from your workstation without repeating
-setup steps.
+setup steps. The wrappers operate on the nested plugin repo at `xlua/` by
+default; set `XLUA_PLUGIN_ROOT` if your checkout lives elsewhere.
+
+Common variables:
+
+* `XLUA_PLUGIN_ROOT` – override the nested plugin repo path (defaults to
+  `<workspace>/xlua`).
 
 ## macOS (`build_mac.sh`)
 
 ```
+export XPLANE_SDK_ROOT="$PWD/xlua/SDK"
 ./tools/workbench/build_mac.sh
 ```
 
@@ -21,24 +28,33 @@ Requirements:
 
 ```
 ./tools/workbench/build_linux.sh
+
+# Force Docker if Podman is flaky:
+CONTAINER_RUNTIME=docker ./tools/workbench/build_linux.sh
 ```
 
 Requirements:
 
-* Podman installed on the Mac host.
-* A Podman machine initialized (`podman machine init`/`start`). The script will
-  try to start it if it is not running.
+* Podman or Docker installed on the Mac host.
+* If you use Podman, a machine initialized (`podman machine init`/`start`).
+  The script prefers a working Podman setup, but falls back to Docker when
+  Podman is unreachable.
 * Sufficient disk space/bandwidth for the container to `apt-get install`
   `build-essential`/`cmake`/`ninja-build`/`pkg-config` the first time it runs.
 
 The wrapper mounts the repo into `/work` inside an `ubuntu:22.04` container and
-invokes `jenkins/build.sh` with `PLATFORM=LIN`.
+invokes `jenkins/build.sh` with `PLATFORM=LIN`. On Apple Silicon it
+automatically uses `linux/amd64`.
 
 Set `LINUX_BUILD_IMAGE` to use a different base image.
+Set `CONTAINER_RUNTIME=podman` or `CONTAINER_RUNTIME=docker` to force a
+specific runtime.
 
 ## Windows
 
 ```
+PARALLELS_VM="Windows 11" \
+WIN_REPO_PATH="\\\\Mac\\Home\\Documents\\Projects\\xlua\\xlua" \
 ./tools/workbench/build_win.sh
 ```
 
