@@ -1,0 +1,138 @@
+name: Toolkit Component Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing XLua release tag, for example r1.3.7r3
+        required: true
+        type: string
+      channel:
+        description: Toolkit release channel
+        required: true
+        default: stable
+        type: choice
+        options:
+          - stable
+          - beta
+      publish:
+        description: Create or update the GitHub Release after validation
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag }}
+          submodules: recursive
+      - uses: microsoft/setup-msbuild@v2
+      - name: Build Windows x64
+        shell: pwsh
+        run: |
+          msbuild xlua.vcxproj /m /p:Configuration=Release /p:Platform=x64
+          New-Item -ItemType Directory -Force jenkins/build_products | Out-Null
+          Copy-Item Release/plugins/win_x64/xlua.xpl jenkins/build_products/xlua_win.xpl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xlua-win-x64
+          path: jenkins/build_products/xlua_win.xpl
+          if-no-files-found: error
+          retention-days: 1
+
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag }}
+          submodules: recursive
+      - name: Build macOS universal
+        env:
+          PLATFORM: APL
+          WANT_CODESIGN: NO
+          XLUA_BUILD_ROOT: ${{ runner.temp }}/xlua-build
+        run: ./jenkins/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xlua-mac-universal
+          path: jenkins/build_products/xlua_mac.xpl
+          if-no-files-found: error
+          retention-days: 1
+
+  build-linux:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/x-plane/xlua_builder:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag }}
+          submodules: recursive
+      - name: Build Linux x64
+        env:
+          PLATFORM: LIN
+          WANT_CODESIGN: NO
+          XLUA_BUILD_ROOT: /tmp/xlua-build
+        run: ./jenkins/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xlua-linux-x64
+          path: jenkins/build_products/xlua_lin.xpl
+          if-no-files-found: error
+          retention-days: 1
+
+  package:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xlua-*
+          path: jenkins/build_products
+          merge-multiple: true
+      - name: Assemble verified Toolkit component
+        run: |
+          mkdir -p deploy/win_x64 deploy/mac_x64 deploy/lin_x64
+          cp jenkins/build_products/xlua_win.xpl deploy/win_x64/xlua.xpl
+          cp jenkins/build_products/xlua_mac.xpl deploy/mac_x64/xlua.xpl
+          cp jenkins/build_products/xlua_lin.xpl deploy/lin_x64/xlua.xpl
+          python3 tools/package_toolkit_release.py \
+            --output dist \
+            --release-tag '${{ inputs.release_tag }}' \
+            --channel '${{ inputs.channel }}'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xlua-toolkit-release-${{ inputs.release_tag }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publish GitHub Release assets
+        if: ${{ inputs.publish }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          prerelease=()
+          if [ "$CHANNEL" = beta ]; then
+            prerelease=(--prerelease)
+          fi
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" \
+              --title "XLua ${RELEASE_TAG#r}" \
+              --generate-notes \
+              "${prerelease[@]}"
+          fi
+          gh release upload "$RELEASE_TAG" dist/* --clobber

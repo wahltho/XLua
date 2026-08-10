@@ -81,6 +81,24 @@ Initial Release
 
 ## Documentation
 
+### X-Plane 737NG Maintenance Toolkit package
+
+`tools/package_toolkit_release.py` creates a deterministic aircraft-component
+archive and its machine-readable manifest from the four release-owned files in
+`deploy/`. It intentionally excludes `deploy/scripts`, hidden macOS metadata,
+and every other aircraft-owned file.
+
+```bash
+python3 tools/package_toolkit_release.py --output dist --release-tag r1.3.7r3
+```
+
+Upload both generated files to the matching GitHub Release. The Toolkit
+installs the package under an explicitly selected Zibo or LevelUp aircraft and
+preserves the aircraft-specific `plugins/xlua/scripts` tree.
+The release tag must match the version compiled into XLua (an optional leading
+`r` or `v` is accepted); beta releases therefore require their own matching
+source version and prerelease tag.
+
 ### Script packaging and basic structure
 
 XLua scripts are organized into “modules” - each module is a fully independent script that runs inside your aircraft.
