@@ -9,6 +9,10 @@ XLua is developed internally by Laminar Research and is intended to help our int
 XLua is **not** meant to be an "official" Lua plugin for X-Plane, and it definitely does not replace any of the existing Lua plugins, all of which have significantly more features than XLua itself.
 
 ## Release Notes
+**1.3.7r4 - 2026-08-17**
+* Rebuild the 1.3.7r3 package with a corrected universal macOS binary (`x86_64` + `arm64`).
+* No runtime code changes from 1.3.7r3 beyond the release version bump.
+
 **1.3.7r3 - 04/14/2026**
 * Restore forced full reload behavior for `XLuaReloadOnFlightChange()`.
 * Fix repeated-log deduplication so identical messages collapse correctly again.
@@ -89,7 +93,7 @@ archive and its machine-readable manifest from the four release-owned files in
 and every other aircraft-owned file.
 
 ```bash
-python3 tools/package_toolkit_release.py --output dist --release-tag r1.3.7r3
+python3 tools/package_toolkit_release.py --output dist --release-tag r1.3.7r4
 ```
 
 Upload both generated files to the matching GitHub Release. The Toolkit

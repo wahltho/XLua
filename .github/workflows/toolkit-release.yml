@@ -58,7 +58,22 @@ jobs:
           PLATFORM: APL
           WANT_CODESIGN: NO
           XLUA_BUILD_ROOT: ${{ runner.temp }}/xlua-build
-        run: ./jenkins/build.sh
+        run: |
+          xcodebuild \
+            -scheme xlua \
+            -config Release \
+            -project xlua.xcodeproj \
+            -archivePath "${XLUA_BUILD_ROOT}/work/mac/XLua.xcarchive" \
+            -derivedDataPath "${XLUA_BUILD_ROOT}/work/mac/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY= \
+            ARCHS='arm64 x86_64' \
+            ONLY_ACTIVE_ARCH=NO \
+            clean archive
+          mkdir -p jenkins/build_products
+          mv "${XLUA_BUILD_ROOT}/work/mac/XLua.xcarchive/Products/usr/local/lib/xlua.xpl" jenkins/build_products/xlua_mac.xpl
+          lipo -verify_arch x86_64 arm64 jenkins/build_products/xlua_mac.xpl
       - uses: actions/upload-artifact@v4
         with:
           name: xlua-mac-universal
