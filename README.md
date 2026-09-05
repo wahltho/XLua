@@ -9,6 +9,10 @@ XLua is developed internally by Laminar Research and is intended to help our int
 XLua is **not** meant to be an "official" Lua plugin for X-Plane, and it definitely does not replace any of the existing Lua plugins, all of which have significantly more features than XLua itself.
 
 ## Release Notes
+**1.3.7r5 - 2026-09-05**
+* Add a plugin menu item that shows the current LuaJIT runtime state as `JIT: On` / `JIT: Off` and toggles the same runtime state as `xlua/jit_enabled` and `xlua/jit_toggle`.
+* Move volatile macOS, Linux, and Windows build intermediates under `XLUA_BUILD_ROOT` so source/documentation/deploy files can stay in synced checkouts without high-churn build output.
+
 **1.3.7r4 - 2026-08-17**
 * Rebuild the 1.3.7r3 package with a corrected universal macOS binary (`x86_64` + `arm64`).
 * No runtime code changes from 1.3.7r3 beyond the release version bump.
@@ -93,7 +97,7 @@ archive and its machine-readable manifest from the four release-owned files in
 and every other aircraft-owned file.
 
 ```bash
-python3 tools/package_toolkit_release.py --output dist --release-tag r1.3.7r4
+python3 tools/package_toolkit_release.py --output dist --release-tag r1.3.7r5
 ```
 
 Upload both generated files to the matching GitHub Release. The Toolkit
@@ -142,7 +146,7 @@ The file “init.lua” is part of the XLua plugin itself and should not be edit
 These controls let you toggle expensive diagnostics and JIT at runtime without touching scripts:
 
 * Dataref `xlua/logging_enabled` (int, default 1): set to 0 to suppress XLua’s log chatter; set back to 1 to re-enable. Command `xlua/logging_toggle` flips it.
-* Dataref `xlua/jit_enabled` (int, default 0): opt-in toggle for LuaJIT; set to 1 to enable JIT, 0 to disable. Command `xlua/jit_toggle` flips it in flight.
+* Dataref `xlua/jit_enabled` (int, default 0): opt-in toggle for LuaJIT; set to 1 to enable JIT, 0 to disable. Command `xlua/jit_toggle` flips it in flight. The plugin menu also exposes a `JIT: On` / `JIT: Off` item that shows and toggles the current state.
 
 Both datarefs are writable; the commands are useful for keybindings or testing without repackaging scripts.
 

@@ -45,6 +45,7 @@
 
 static XPLMDataRef drSimRealTime = nullptr;
 void xlua_apply_jit_setting(bool enable);
+void xlua_update_jit_menu_item(bool enable);
 
 static int l_my_print(lua_State* L);
 static void output_log_line(const std::string& line, const std::string& dedupe_key, char level);
@@ -72,6 +73,23 @@ static int xlua_get_jit_enabled(void* /*ref*/)
 	return g_jit_enabled;
 }
 
+bool xlua_is_jit_runtime_enabled(void)
+{
+	return g_jit_enabled != 0;
+}
+
+void xlua_set_jit_runtime_enabled(bool enable)
+{
+	g_jit_enabled = enable ? 1 : 0;
+	xlua_apply_jit_setting(g_jit_enabled != 0);
+	xlua_update_jit_menu_item(g_jit_enabled != 0);
+}
+
+void xlua_toggle_jit_runtime(void)
+{
+	xlua_set_jit_runtime_enabled(!xlua_is_jit_runtime_enabled());
+}
+
 static void xlua_set_log_enabled(void* /*ref*/, int value)
 {
 	g_logging_enabled = (value != 0);
@@ -80,8 +98,7 @@ static void xlua_set_log_enabled(void* /*ref*/, int value)
 
 static void xlua_set_jit_enabled(void* /*ref*/, int value)
 {
-	g_jit_enabled = (value != 0);
-	xlua_apply_jit_setting(g_jit_enabled != 0);
+	xlua_set_jit_runtime_enabled(value != 0);
 }
 
 static int xlua_log_toggle_cb(XPLMCommandRef /*inCommand*/, XPLMCommandPhase inPhase, void* /*inRefcon*/)
@@ -100,8 +117,7 @@ static int xlua_jit_toggle_cb(XPLMCommandRef /*inCommand*/, XPLMCommandPhase inP
 {
 	if (inPhase != xplm_CommandBegin)
 		return 1;
-	g_jit_enabled = !g_jit_enabled;
-	xlua_apply_jit_setting(g_jit_enabled != 0);
+	xlua_toggle_jit_runtime();
 	return 1;
 }
 

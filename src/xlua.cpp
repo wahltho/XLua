@@ -3,7 +3,7 @@
 //	See LICENSE.txt for the full terms of the license.
 
 
-#define VERSION "1.3.7r4"
+#define VERSION "1.3.7r5"
 
 #include <stdio.h>
 #include <string.h>
@@ -67,6 +67,7 @@ XPLMDataRef				g_replay_active = NULL;
 XPLMDataRef				g_sim_period = NULL;
 XPLMCommandRef			reset_cmd = nullptr;
 XPLMMenuID				PluginMenu = 0;
+static int				g_jit_menu_item = -1;
 
 static string plugin_base_path;
 static time_t g_scripts_dir_mtime = 0;
@@ -240,6 +241,7 @@ struct lua_alloc_request_t {
 enum eMenuItems : int
 {
 	MI_ResetState,
+	MI_ToggleJit,
 };
 
 bool g_bReloadOnFlightChange = false;
@@ -496,7 +498,19 @@ static void MenuHandler(void* menuRef, void* itemRef)
 		case MI_ResetState:
 			ResetState(reset_cmd, xplm_CommandBegin, nullptr);
 			break;
+		case MI_ToggleJit:
+			xlua_toggle_jit_runtime();
+			break;
 	}
+}
+
+void xlua_update_jit_menu_item(bool enable)
+{
+	if (PluginMenu == nullptr || g_jit_menu_item < 0)
+		return;
+
+	XPLMSetMenuItemName(PluginMenu, g_jit_menu_item, enable ? "JIT: On" : "JIT: Off", 0);
+	XPLMCheckMenuItem(PluginMenu, g_jit_menu_item, enable ? xplm_Menu_Checked : xplm_Menu_Unchecked);
 }
 
 PLUGIN_API int XPluginStart(
@@ -575,6 +589,8 @@ PLUGIN_API int XPluginStart(
 				int item = XPLMAppendMenuItem(XPLMFindPluginsMenu(), menuName, nullptr, 0);
 				PluginMenu = XPLMCreateMenu(menuName, XPLMFindPluginsMenu(), item, MenuHandler, nullptr);
 				XPLMAppendMenuItem(PluginMenu, "Reload Scripts", (void*)MI_ResetState, 0);
+				g_jit_menu_item = XPLMAppendMenuItem(PluginMenu, "JIT: Off", (void*)MI_ToggleJit, 0);
+				xlua_update_jit_menu_item(xlua_is_jit_runtime_enabled());
 				break;
 			}
 		} while (lp != std::string::npos && ac_base_path.size() >= acPathLen);
@@ -597,6 +613,7 @@ PLUGIN_API void	XPluginStop(void)
 	{
 		XPLMDestroyMenu(PluginMenu);
 		PluginMenu = nullptr;
+		g_jit_menu_item = -1;
 	}
 
 	CleanupScripts();

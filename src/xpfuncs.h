@@ -41,5 +41,8 @@ void xlua_pushuserdata(lua_State * state, T data)
 void InitScripts(void);
 void CleanupScripts(void);
 void xlua_flush_log_queue(void);
+bool xlua_is_jit_runtime_enabled(void);
+void xlua_set_jit_runtime_enabled(bool enable);
+void xlua_toggle_jit_runtime(void);
 
 #endif /* xpfuncs_h */

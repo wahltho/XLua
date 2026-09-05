@@ -1,4 +1,5 @@
-BUILDDIR	:=	./build
+XLUA_BUILD_ROOT ?= $(HOME)/dev/xlua
+BUILDDIR	?=	$(XLUA_BUILD_ROOT)/work/linux/build
 SRC_BASE	:=	.
 TARGET		:= xlua
 
@@ -89,5 +90,4 @@ clean:
 # header is changed, the primary header had it before (and is unchanged)
 # so that is in the dependency file too.
 -include $(ALL_DEPS64)
-
 

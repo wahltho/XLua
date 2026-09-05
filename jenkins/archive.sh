@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
+BUILD_PRODUCTS_DIR="${BUILD_PRODUCTS_DIR:-jenkins/build_products}"
 
 case "$PLATFORM" in
 "IBM")
-	echo jenkins/build_products/xlua_win.xpl
+	echo "${BUILD_PRODUCTS_DIR}/xlua_win.xpl"
 	;;
 "APL")
-	echo jenkins/build_products/xlua_mac.xpl
+	echo "${BUILD_PRODUCTS_DIR}/xlua_mac.xpl"
 	;;
 "LIN")
-	echo jenkins/build_products/xlua_lin.xpl
+	echo "${BUILD_PRODUCTS_DIR}/xlua_lin.xpl"
 	;;
 esac
-

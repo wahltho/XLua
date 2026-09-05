@@ -6,29 +6,54 @@ if [ -z "${PLATFORM}" ]; then
 fi
 
 WANT_CODESIGN="${WANT_CODESIGN:-NO}"
-DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$(pwd)/DerivedData}"
+XLUA_BUILD_ROOT="${XLUA_BUILD_ROOT:-${HOME}/dev/xlua}"
+XLUA_BUILD_ROOT="${XLUA_BUILD_ROOT%/}"
+XLUA_WORK_ROOT="${XLUA_BUILD_ROOT}/work"
+MAC_BUILD_ROOT="${XLUA_WORK_ROOT}/mac"
+LIN_BUILDDIR="${LIN_BUILDDIR:-${XLUA_WORK_ROOT}/linux/build}"
+DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-${MAC_BUILD_ROOT}/DerivedData}"
+MAC_ARCHIVE_PATH="${MAC_ARCHIVE_PATH:-${MAC_BUILD_ROOT}/XLua.xcarchive}"
+MAC_ZIP_PATH="${MAC_ZIP_PATH:-${MAC_BUILD_ROOT}/xlua_mac.zip}"
+BUILD_PRODUCTS_DIR="${BUILD_PRODUCTS_DIR:-jenkins/build_products}"
 
 function clean() {
 	rm -rf xlua.xcarchive
+	rm -rf XLua.xcarchive
 	rm -rf xlua_mac.zip
+	rm -rf DerivedData
+	rm -rf build
 	rm -rf Debug
 	rm -rf Release
-	mkdir -p jenkins/build_products
+	rm -rf "${MAC_ARCHIVE_PATH}"
+	rm -rf "${MAC_ZIP_PATH}"
+	mkdir -p "${MAC_BUILD_ROOT}"
+	mkdir -p "${BUILD_PRODUCTS_DIR}"
 }
 
 echo Removing old build products... 
-rm -rf jenkins/build_products/
+rm -rf "${BUILD_PRODUCTS_DIR}/"
 clean
 
 case "$PLATFORM" in
 "IBM")
 	MSBUILD="$MSVC_ROOT"/MSBuild/Current/Bin/MSBuild.exe 
-	"$MSBUILD" xlua.vcxproj /t:Clean		
-	"$MSBUILD" /m /p:Configuration="Release" /p:Platform="x64" xlua.vcxproj
-	echo mv Release/plugins/win_x64/xlua.pdb jenkins/build_products/xlua_win.pdb
-	mv Release/plugins/win_x64/xlua.pdb jenkins/build_products/xlua_win.pdb
-	echo mv Release/plugins/win_x64/xlua.xpl jenkins/build_products/xlua_win.xpl
-	mv Release/plugins/win_x64/xlua.xpl jenkins/build_products/xlua_win.xpl
+	MSBUILD_PROPS=(
+		/p:Configuration="Release"
+		/p:Platform="x64"
+	)
+	if [ -n "${WIN_OUT_DIR:-}" ]; then
+		MSBUILD_PROPS+=(/p:OutDir="${WIN_OUT_DIR}")
+	fi
+	if [ -n "${WIN_INT_DIR:-}" ]; then
+		MSBUILD_PROPS+=(/p:IntDir="${WIN_INT_DIR}")
+	fi
+	"$MSBUILD" xlua.vcxproj /t:Clean "${MSBUILD_PROPS[@]}"
+	"$MSBUILD" /m "${MSBUILD_PROPS[@]}" xlua.vcxproj
+	WIN_OUTPUT_DIR="${WIN_OUT_DIR:-Release/plugins/win_x64}"
+	echo mv "${WIN_OUTPUT_DIR}/xlua.pdb" "${BUILD_PRODUCTS_DIR}/xlua_win.pdb"
+	mv "${WIN_OUTPUT_DIR}/xlua.pdb" "${BUILD_PRODUCTS_DIR}/xlua_win.pdb"
+	echo mv "${WIN_OUTPUT_DIR}/xlua.xpl" "${BUILD_PRODUCTS_DIR}/xlua_win.xpl"
+	mv "${WIN_OUTPUT_DIR}/xlua.xpl" "${BUILD_PRODUCTS_DIR}/xlua_win.xpl"
 	;;
 "APL")
 	
@@ -60,7 +85,7 @@ case "$PLATFORM" in
 		-scheme xlua \
 		-config Release \
 		-project xlua.xcodeproj \
-		-archivePath XLua.xcarchive \
+		-archivePath "${MAC_ARCHIVE_PATH}" \
 		-derivedDataPath "${DERIVED_DATA_PATH}" \
 		"${CODE_SIGN_ARGS[@]}" \
 		archive
@@ -68,17 +93,17 @@ case "$PLATFORM" in
 	if [ "${WANT_CODESIGN}" == "YES" ]; then
 		echo Notarizing...
 		./build-tools/mac/notarization.sh \
-				xlua_mac.zip \
-				xlua.xcarchive/Products/usr/local/lib/xlua.xpl \
+				"${MAC_ZIP_PATH}" \
+				"${MAC_ARCHIVE_PATH}/Products/usr/local/lib/xlua.xpl" \
 				no-staple
 	fi
 	
-	mv xlua.xcarchive/Products/usr/local/lib/xlua.xpl jenkins/build_products/xlua_mac.xpl
+	mv "${MAC_ARCHIVE_PATH}/Products/usr/local/lib/xlua.xpl" "${BUILD_PRODUCTS_DIR}/xlua_mac.xpl"
 	;;
 "LIN")
-	make clean
-	make
-	cp build/xlua/64/lin.xpl jenkins/build_products/xlua_lin.xpl
+	make BUILDDIR="${LIN_BUILDDIR}" clean
+	make BUILDDIR="${LIN_BUILDDIR}"
+	cp "${LIN_BUILDDIR}/xlua/64/lin.xpl" "${BUILD_PRODUCTS_DIR}/xlua_lin.xpl"
 	;;
 *)
 	echo "PLATFORM not set properly - it must be one of APL IBM or LIN"
