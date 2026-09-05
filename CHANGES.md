@@ -3,6 +3,10 @@
 This tracks the runtime optimizations and controls added while profiling XLua
 for script-heavy aircraft (e.g., Zibo).
 
+## 1.3.7r5
+* Add a plugin-menu `JIT: On` / `JIT: Off` item that shows and toggles the same runtime state as `xlua/jit_enabled` and `xlua/jit_toggle`.
+* Move volatile platform build intermediates under `XLUA_BUILD_ROOT` while keeping source, documentation, deploy payloads, and release artifacts in their existing repo locations.
+
 ## 1.3.7r1
 * Clear the command lookup cache on shutdown/reload to avoid stale handles after script reloads (fixes default commands breaking post-reload).
 * Keep JIT opt-in controls: dataref `xlua/jit_enabled` (default off) and command `xlua/jit_toggle` to flip JIT at runtime without touching scripts.

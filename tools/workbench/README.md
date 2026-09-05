@@ -9,6 +9,8 @@ Common variables:
 
 * `XLUA_PLUGIN_ROOT` – override the nested plugin repo path (defaults to
   `<workspace>/xlua`).
+* `XLUA_BUILD_ROOT` – local build working directory (defaults to
+  `~/dev/xlua`). Keep this outside iCloud-synced folders.
 
 ## macOS (`build_mac.sh`)
 
@@ -43,7 +45,8 @@ Requirements:
   `build-essential`/`cmake`/`ninja-build`/`pkg-config` the first time it runs.
 
 The wrapper mounts the repo into `/work` inside an `ubuntu:22.04` container and
-invokes `jenkins/build.sh` with `PLATFORM=LIN`. On Apple Silicon it
+mounts `XLUA_BUILD_ROOT` at the same absolute path for generated intermediates.
+It invokes `jenkins/build.sh` with `PLATFORM=LIN`. On Apple Silicon it
 automatically uses `linux/amd64`.
 
 Set `LINUX_BUILD_IMAGE` to use a different base image.
@@ -68,8 +71,11 @@ Environment variables:
 
 * `PARALLELS_VM` – name of the VM (e.g. `Windows 11`).
 * `WIN_REPO_PATH` – Windows path to the shared repo.
+* Optional `WIN_BUILD_ROOT` – Windows path to the host build root (defaults to
+  `Z:/dev/xlua`, matching the usual Parallels `Z:` mapping to `\\Mac\Home`).
 * Optional `MSBUILD_PATH` – override MSBuild location (defaults to the VS 2022
   Community path).
 
 The script invokes MSBuild via `prlctl exec` and copies
-`Release\plugins\win_x64\` artifacts into `jenkins/build_products/`.
+`${XLUA_BUILD_ROOT}/work/windows/Release/plugins/win_x64/` artifacts into
+`jenkins/build_products/`.

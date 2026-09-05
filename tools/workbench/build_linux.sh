@@ -7,6 +7,7 @@ PLUGIN_ROOT="${XLUA_PLUGIN_ROOT:-${WORKSPACE_ROOT}/xlua}"
 IMAGE="${LINUX_BUILD_IMAGE:-docker.io/library/ubuntu:22.04}"
 CONTAINER_RUNTIME="${CONTAINER_RUNTIME:-}"
 PODMAN_MACHINE="${PODMAN_MACHINE:-podman-machine-default}"
+XLUA_BUILD_ROOT="${XLUA_BUILD_ROOT:-${HOME}/dev/xlua}"
 
 if [[ ! -f "${PLUGIN_ROOT}/jenkins/build.sh" ]]; then
 	echo "Cannot find xlua plugin repo at ${PLUGIN_ROOT}. Set XLUA_PLUGIN_ROOT to override." >&2
@@ -64,10 +65,13 @@ EOF
 )
 
 cd "${PLUGIN_ROOT}"
-echo "Running Linux build inside ${IMAGE} via ${CONTAINER_RUNTIME}..."
+mkdir -p "${XLUA_BUILD_ROOT}"
+echo "Running Linux build inside ${IMAGE} via ${CONTAINER_RUNTIME} (build root: ${XLUA_BUILD_ROOT})..."
 "${CONTAINER_RUNTIME}" run --rm \
 	"${PLATFORM_ARGS[@]}" \
 	-v "${PLUGIN_ROOT}:/work" \
+	-v "${XLUA_BUILD_ROOT}:${XLUA_BUILD_ROOT}" \
+	-e "XLUA_BUILD_ROOT=${XLUA_BUILD_ROOT}" \
 	-w /work \
 	"${IMAGE}" \
 	bash -c "${BUILD_CMD}"

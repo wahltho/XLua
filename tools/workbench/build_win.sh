@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 PLUGIN_ROOT="${XLUA_PLUGIN_ROOT:-${WORKSPACE_ROOT}/xlua}"
+XLUA_BUILD_ROOT="${XLUA_BUILD_ROOT:-${HOME}/dev/xlua}"
 
 if [[ ! -f "${PLUGIN_ROOT}/xlua.vcxproj" ]]; then
 	echo "Cannot find xlua plugin repo at ${PLUGIN_ROOT}. Set XLUA_PLUGIN_ROOT to override." >&2
@@ -26,6 +27,7 @@ if [[ -z "${WIN_REPO_PATH:-}" ]]; then
 fi
 
 MSBUILD_PATH="${MSBUILD_PATH:-C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe}"
+WIN_BUILD_ROOT="${WIN_BUILD_ROOT:-Z:/dev/xlua}"
 
 ps_quote() {
 	local str="${1//\'/\'\'}"
@@ -34,12 +36,16 @@ ps_quote() {
 
 MSBUILD_PS=$(ps_quote "$MSBUILD_PATH")
 REPO_PS=$(ps_quote "$WIN_REPO_PATH")
+WIN_BUILD_ROOT_PS=$(ps_quote "$WIN_BUILD_ROOT")
 
 read -r -d '' POWERSHELL_BLOCK <<EOF || true
 & {
     \$ErrorActionPreference = 'Stop'
     \$msbuild = ${MSBUILD_PS}
     \$repo = ${REPO_PS}
+    \$buildRoot = (${WIN_BUILD_ROOT_PS}).TrimEnd('\', '/')
+    \$outDir = \$buildRoot + '/work/windows/Release/plugins/win_x64/'
+    \$intDir = \$buildRoot + '/work/windows/Release/64/'
 
     if (-not (Test-Path \$msbuild)) {
         Write-Error "MSBuild not found at \$msbuild"
@@ -51,23 +57,31 @@ read -r -d '' POWERSHELL_BLOCK <<EOF || true
         exit 1
     }
 
+    New-Item -ItemType Directory -Force -Path \$outDir, \$intDir | Out-Null
+
     Push-Location \$repo
-    & \$msbuild "xlua.vcxproj" "/m" "/p:Configuration=Release" "/p:Platform=x64"
+    & \$msbuild "xlua.vcxproj" "/m" "/t:Clean" "/p:Configuration=Release" "/p:Platform=x64" "/p:OutDir=\$outDir" "/p:IntDir=\$intDir"
+    if (\$LASTEXITCODE -ne 0) {
+        exit \$LASTEXITCODE
+    }
+
+    & \$msbuild "xlua.vcxproj" "/m" "/t:Build" "/p:Configuration=Release" "/p:Platform=x64" "/p:OutDir=\$outDir" "/p:IntDir=\$intDir"
     \$code = \$LASTEXITCODE
     Pop-Location
     exit \$code
 }
 EOF
 
-echo "Building XLua in VM '${PARALLELS_VM}' (MSBuild: ${MSBUILD_PATH})..."
-prlctl exec "${PARALLELS_VM}" -- powershell -NoProfile -NonInteractive -Command "$POWERSHELL_BLOCK"
+mkdir -p "${XLUA_BUILD_ROOT}"
+echo "Building XLua in VM '${PARALLELS_VM}' (MSBuild: ${MSBUILD_PATH}, build root: ${XLUA_BUILD_ROOT})..."
+prlctl exec "${PARALLELS_VM}" powershell -NoProfile -NonInteractive -Command "$POWERSHELL_BLOCK"
 
-WIN_OUTPUT_DIR="${PLUGIN_ROOT}/Release/plugins/win_x64"
+WIN_OUTPUT_DIR="${XLUA_BUILD_ROOT}/work/windows/Release/plugins/win_x64"
 WIN_XPL="${WIN_OUTPUT_DIR}/xlua.xpl"
 WIN_PDB="${WIN_OUTPUT_DIR}/xlua.pdb"
 
 if [[ ! -f "${WIN_XPL}" ]]; then
-	echo "Expected artifact not found at ${WIN_XPL}. Ensure the repo is shared into the VM." >&2
+	echo "Expected artifact not found at ${WIN_XPL}. Ensure WIN_BUILD_ROOT maps to XLUA_BUILD_ROOT inside the VM." >&2
 	exit 1
 fi
 

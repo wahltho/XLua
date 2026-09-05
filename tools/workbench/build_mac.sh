@@ -18,6 +18,7 @@ fi
 export PLATFORM=APL
 export WANT_CODESIGN="${WANT_CODESIGN:-NO}"
 export XPLANE_SDK_ROOT="${XPLANE_SDK_ROOT:-}"
+export XLUA_BUILD_ROOT="${XLUA_BUILD_ROOT:-${HOME}/dev/xlua}"
 
 if [[ -z "${XPLANE_SDK_ROOT}" ]]; then
 	echo "XPLANE_SDK_ROOT is not set. Export it before running this script." >&2
@@ -25,5 +26,6 @@ if [[ -z "${XPLANE_SDK_ROOT}" ]]; then
 fi
 
 cd "${PLUGIN_ROOT}"
-echo "Building macOS plugin via jenkins/build.sh (codesign: ${WANT_CODESIGN})..."
+mkdir -p "${XLUA_BUILD_ROOT}"
+echo "Building macOS plugin via jenkins/build.sh (codesign: ${WANT_CODESIGN}, build root: ${XLUA_BUILD_ROOT})..."
 ./jenkins/build.sh
