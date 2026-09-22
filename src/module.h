@@ -11,7 +11,7 @@
 #ifndef module_h
 #define module_h
 
-#define XLUA_VERSION "2.0.0b1-opt1"
+#define XLUA_VERSION "2.0.0b1-opt4"
 
 #ifndef NOMINMAX
 	#define NOMINMAX
