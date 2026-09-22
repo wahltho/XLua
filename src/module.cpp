@@ -29,8 +29,8 @@
 	#include "xmap.h"
 	extern "C"
 	{
-		#include "../luajit/src/luajit.h"
-		#include "../luajit/src/lualib.h"
+		#include <luajit.h>
+		#include <lualib.h>
 	}
 #else
 	#include "xlua_imgui.h"
@@ -38,8 +38,8 @@
 
 	extern "C"
 	{
-		#include "../luajit/src/luajit.h"
-		#include "../luajit/src/lualib.h"
+		#include <luajit.h>
+		#include <lualib.h>
 	}
 
 	void add_xplm_to_interp(lua_State* L);

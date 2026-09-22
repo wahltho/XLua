@@ -9,6 +9,34 @@ XLua is developed internally by Laminar Research and is intended to help our int
 XLua is **not** meant to be an "official" Lua plugin for X-Plane, and it definitely does not replace any of the existing Lua plugins, all of which have significantly more features than XLua itself.
 
 ## Release Notes
+**2.0.0b3-opt5 - 10/12/2026**
+* Rebases the optimized runtime onto Laminar Research XLua 2.0.0b3 (`58360d9`).
+* Includes Laminar's XLua 2.0.0b2 module-load fixes and XLua 2.0.0b3 SDK and panel-graphics updates.
+* Preserves deterministic module loading, command and dataref caches, cached per-frame callouts, and the JIT state menu.
+* Keeps LuaJIT at upstream commit `c6ffc141` (`LuaJIT 2.1.1788856981`).
+* This is an experimental prerelease; platform builds and X-Plane runtime behavior still require validation.
+
+**2.0.0b1-opt4 - 09/22/2026**
+* Reapplies the XLua host-side runtime optimizations to Laminar Research's exact XLua 2.0.0b1 release commit (`764552c`).
+* Avoids the later `XPLMGetProLicenseStatus` dependency so the plugin can load in X-Plane 12.4.4b1.
+* Updates LuaJIT to upstream commit `c6ffc141` (`LuaJIT 2.1.1788856981`).
+* Packages the plugin binary as `xlua.xpl` inside the existing `plugins/xlua` directory so X-Plane discovers it correctly.
+
+**2.0.0b1-opt3 - 09/22/2026**
+* Updates LuaJIT from the previous 2.1.0-beta3 snapshot to upstream commit `c6ffc141` (`LuaJIT 2.1.1788856981`).
+* Keeps the XLua runtime optimizations and Maintenance Toolkit package support from 2.0.0b1-opt2 unchanged.
+
+**2.0.0b1-opt2 - 09/22/2026**
+* Adds a Maintenance Toolkit schema-3 package for transactional XLua 1 to XLua 2 migration.
+* Keeps the XLua 2 runtime changes from 2.0.0b1-opt1 unchanged.
+
+**2.0.0b1-opt1 - 09/22/2026**
+* Based on Laminar Research XLua 2.0.0b1 plus current upstream changes through `646eb5e`.
+* Loads script modules in deterministic order.
+* Caches command and dataref lookups, array dimensions, and per-frame callouts to reduce host-side overhead.
+* Adds a JIT menu toggle whose label and checkmark show the selected state.
+* This is an experimental prerelease and has not yet been validated in X-Plane across all supported platforms.
+
 **1.5.0r1 - 08/01/2025**
 * Adds imgui features to lua
 * Small performance improvements
