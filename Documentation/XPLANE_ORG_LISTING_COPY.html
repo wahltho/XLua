@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimized XLua - X-Plane.org Listing Copy</title>
+  <style>
+    body {
+      max-width: 960px;
+      margin: 32px auto;
+      padding: 0 24px;
+      color: #202124;
+      background: #ffffff;
+      font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    h2 { margin-top: 30px; font-size: 22px; }
+    h3 { margin-top: 24px; font-size: 18px; }
+    li { margin: 5px 0; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <h2>Full Description</h2>
+
+  <p><strong>Optimized XLua</strong> is my independent community fork of <a href="https://github.com/X-Plane/XLua">Laminar Research's open-source XLua plugin</a>. It is <strong>not an official Zibo Mod product</strong> and is not part of an official Zibo or LevelUp aircraft release. It can be installed as an optional runtime in supported aircraft installations.</p>
+
+  <p>This fork aims to reduce overhead in XLua's script discovery, reload checks, command and dataref lookups, logging and per-frame callbacks. The effect depends on the aircraft and workload; <strong>no particular frame-rate gain is guaranteed</strong>. If your plugin menu shows a <code>JIT: On / JIT: Off</code> control, that control comes from this fork, not from the stock Zibo package.</p>
+
+  <h3>Stable and Beta</h3>
+
+  <p>The <strong>Stable</strong> channel follows the optimized XLua 1 line. Users running <strong>X-Plane 12.4.3 must select Stable</strong>; the current Stable release is XLua 1.3.7r5.</p>
+
+  <p><strong>The XLua 2 Beta requires X-Plane 12.4.4 or newer.</strong> It uses SDK functions introduced with X-Plane 12.4.4 and does not load on X-Plane 12.4.3. The Beta channel is a prerelease for testing even on a compatible simulator version. Read the validation notes and installation instructions for the specific release before choosing Beta; a successful build is not proof of simulator behavior. Current packages and release notes are on the <a href="https://github.com/wahltho/XLua/releases">Optimized XLua GitHub releases page</a>.</p>
+
+  <h3>Installing or updating</h3>
+
+  <p>Close X-Plane before changing the plugin. For supported Zibo and LevelUp aircraft, the <a href="https://github.com/wahltho/xplane-737ng-maintenance-toolkit/releases/latest">independent X-Plane 737NG Maintenance Toolkit</a> offers Optimized XLua under <strong>Components &amp; Tools</strong>. Select the aircraft installation and the Stable or Beta channel, check the release, then review and confirm the proposed action. The Toolkit validates recognized runtime files, creates a backup and preserves the aircraft-owned <code>plugins/xlua/scripts</code> directory. Use a current Toolkit release for Beta packages. Selecting Beta in the Toolkit does not make XLua 2 compatible with X-Plane 12.4.3.</p>
+
+  <p>Manual installation remains available from the matching GitHub release. Follow that release's instructions: back up the complete aircraft <code>plugins/xlua</code> folder, replace only the supplied runtime files inside that existing folder, and leave <code>plugins/xlua/scripts</code> unchanged. Do not create a second <code>plugins/xlua2</code> folder or leave old and new runtime binaries side by side. Earlier experimental XLua 2 packages may require the cleanup described in the current release notes.</p>
+
+  <h3>Support and feedback</h3>
+
+  <p><strong>Please use the comments on this download page for Optimized XLua questions, not the official Zibo Discord or forum.</strong> Zibo and Skymatix do not support this independent runtime. When reporting a problem, include the XLua release, operating system, aircraft version, X-Plane version and relevant <code>Log.txt</code> entries. Questions about the Toolkit itself belong on its <a href="https://forums.x-plane.org/files/file/101018-x-plane-737ng-maintenance-toolkit/">own download page</a>.</p>
+
+  <p>If XLua 2 is installed on X-Plane 12.4.3, Windows may report <code>Error Code = 127 : The specified procedure could not be found.</code> XLua then never starts, so subsequent missing-dataref errors from FMOD, AFCBridge, BFC_Throttle or other integrations are expected follow-on symptoms. Restore the Stable XLua 1 runtime before investigating those secondary messages.</p>
+
+  <p>Optimized XLua is provided without warranty. Keep a backup of your aircraft before changing its plugins.</p>
+</body>
+</html>

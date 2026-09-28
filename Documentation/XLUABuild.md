@@ -6,6 +6,18 @@ BetterPushback (BPB) cross-build guide: keep host-side setup minimal,
 delegate Linux/Windows specifics to dedicated environments, and ensure all
 artifacts land in a predictable staging directory.
 
+## Runtime Compatibility
+
+The optimized XLua 2 Beta requires X-Plane 12.4.4 or newer because it uses SDK
+functions introduced with that simulator release. It does not load on
+X-Plane 12.4.3. Use the Stable XLua 1.3.7r5 runtime for installations that
+remain on X-Plane 12.4.3.
+
+This runtime requirement applies equally to manual packages and packages
+installed through the Maintenance Toolkit. See
+[`XLUA2_COMPATIBILITY.md`](XLUA2_COMPATIBILITY.md) for the compatibility table,
+failure symptoms, and recovery procedure.
+
 ## Common Layout & Artifacts
 
 * Work from the repository root (`~/Documents/Projects/xlua/xlua` in this

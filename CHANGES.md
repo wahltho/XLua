@@ -3,6 +3,10 @@
 This tracks the runtime optimizations and controls added while profiling XLua
 for script-heavy aircraft (e.g., Zibo).
 
+## Documentation
+* Clarify that the optimized XLua 2 Beta requires X-Plane 12.4.4 or newer and does not load on X-Plane 12.4.3.
+* Document the resulting Windows loader error and distinguish downstream missing-dataref messages from the original XLua load failure.
+
 ## 1.3.7r5
 * Add a plugin-menu `JIT: On` / `JIT: Off` item that shows and toggles the same runtime state as `xlua/jit_enabled` and `xlua/jit_toggle`.
 * Move volatile platform build intermediates under `XLUA_BUILD_ROOT` while keeping source, documentation, deploy payloads, and release artifacts in their existing repo locations.
